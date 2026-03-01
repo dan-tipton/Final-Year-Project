@@ -1,0 +1,32 @@
+  # generate automatic plots
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("0", "0", "0")
+    agePlot100_100_z001_sin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, False)
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("7", "0", "0")
+    agePlot170_100_z001_sin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, True)
+
+    agePlot170_100_z001_sin.show()
+
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("0", "1", "0")
+    agePlot100_100_z001_bin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, False)
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("7", "1", "0")
+    agePlot170_100_z001_bin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, True)
+
+    agePlot170_100_z001_bin.show()
+
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("0", "0", "0")
+    agePlot100_100_z001_sin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, False)
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("0", "0", "10")
+    agePlot100_100_z040_sin = myPlotter.agePlots(input_imf, input_metal, input_sinbin, True)
+
+    agePlot100_100_z040_sin.show()
+
+    fig, ax = plt.subplots()
+    fig1, ax1 = plt.subplots()
+
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("0", "0", "0")
+    metalPlot100_100_sin = myPlotter.metalPlots(input_imf, input_sinbin, False, False, ax, ax1)
+    input_imf, input_metal, input_sinbin = mySelector.assignInputsAuto("7", "0", "0")
+    metalPlot170_100_sin = myPlotter.metalPlots(input_imf, input_sinbin, False, True, ax, ax1)
+
+    #metalPlot170_100_sin.show()
+    plt.show()
