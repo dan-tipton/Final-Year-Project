@@ -302,7 +302,7 @@ elif mode == 4:
     Same as above just build around multiple csv inputs
     """
     
-    build = False
+    build = True
     snapNums = [2, 20, 40, 66, 98]
     #snapNums = [40]
     colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown']
@@ -325,6 +325,11 @@ elif mode == 4:
     ax2.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
     ax2.set_xscale('log')
     ax2.set_yscale('log')
+
+    fig3, ax4 = plt.subplots()
+    ax4.set_xlabel('Redshift')
+    ax4.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
+    ax4.set_title(f'Supernova Rate over redshift')
 
 
     for idx, snapNum in enumerate(snapNums): 

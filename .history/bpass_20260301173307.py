@@ -326,6 +326,11 @@ elif mode == 4:
     ax2.set_xscale('log')
     ax2.set_yscale('log')
 
+    fig3, ax4 = plt.subplots()
+    ax4.set_xlabel('Redshift')
+    ax4.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
+    ax4.set_title(f'Supernova Rate over redshift')
+
 
     for idx, snapNum in enumerate(snapNums): 
         if build == True:
