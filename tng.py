@@ -25,6 +25,8 @@ bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
 bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
+
 def count_lines_fast(path):
     with open(path, "rb") as f:
         count = 0
@@ -46,7 +48,7 @@ def build_rates(snap):
     for file_name in my_glob:
         try:
             total_lines = count_lines_fast(file_name)
-            # if CSV has a single header row:
+            # CSV has a single header row:
             total_rows = max(0, total_lines - 1)
         except Exception:
             total_rows = None
@@ -83,8 +85,8 @@ def calculate_densities(snaps):
     
     for idx, snap in enumerate(snaps):
         # read rate files
-        snr_rates_path = f"/Users/dan/Code/FYP/Data/TNG/Rates/snapshot{snap}_rates.csv"
-        subhalo_df = pd.read_csv(snr_rates_path)
+        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        subhalo_df = pd.read_csv(rates_file)
 
         if len(subhalo_df) <= 1:
             continue
@@ -122,8 +124,8 @@ def weighted_average(snaps):
 
     for idx, snap in enumerate(snaps):
         # read rate files
-        snr_rates_path = f"/Users/dan/Code/FYP/Data/TNG/Rates/snapshot{snap}_rates.csv"
-        subhalo_df = pd.read_csv(snr_rates_path)
+        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        subhalo_df = pd.read_csv(rates_file)
 
         if len(subhalo_df) <= 1:
             continue
@@ -148,7 +150,6 @@ def weighted_average(snaps):
     ax5.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
     #ax5.set_yscale('log')
     #ax5.set_xscale('log')
-
 
     plt.show()
 
@@ -190,8 +191,8 @@ def plot_rates(snaps):
 
     for idx, snap in enumerate(snaps):
         # read rate files
-        snr_rates_path = f"/Users/dan/Code/FYP/Data/TNG/Rates/snapshot{snap}_rates.csv"
-        subhalo_df = pd.read_csv(snr_rates_path)
+        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        subhalo_df = pd.read_csv(rates_file)
 
         if len(subhalo_df) <= 1:
             continue
@@ -213,7 +214,7 @@ def plot_rates(snaps):
 
 snapshots = [2, 20, 40, 50, 57, 66, 80, 98]
 
-build = False
+build = True
 
 if build == True:
     results = []
