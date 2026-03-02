@@ -391,7 +391,7 @@ elif mode == 4:
     ax3.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
     ax3.set_title(f'Supernova Rate over redshift')
     ax3.set_yscale('log')
-    ax3.set_yscale('log')
+    #ax3.set_xscale('log')
     ax1.legend()
     ax2.legend()
 
