@@ -19,7 +19,7 @@ from scipy.stats import gaussian_kde
 tqdm.set_lock(RLock())
 
 MAX_WORKERS = 4
-colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'green', 'purple', 'pink', 'grey', 'black']
+colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'forestgreen', 'purple', 'pink', 'grey', 'black']
 
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
@@ -173,7 +173,7 @@ def plot_rates(snaps):
     ax2.set_yscale('log')
 
     fig2, ax3 = plt.subplots()
-    ax3.scatter(redshifts, snrd_box, color='cyan', label='SNRD')
+    sc1 = ax3.plot(redshifts, snrd_box, color='blue', label='SNRD', marker='x')
     ax3.set_title('Supernova Rate and Star Formation Rate across time')
     ax3.set_xlabel('Redshift')
     ax3.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
@@ -182,7 +182,7 @@ def plot_rates(snaps):
 
     # Create a second y-axis sharing the same x-axis
     ax4 = ax3.twinx()
-    ax4.scatter(redshifts, sfrd_box, color='red', label='SFRD')
+    sc2 = ax4.plot(redshifts, sfrd_box, color='red', label='SFRD', marker='x')
     ax3.set_ylabel('SFR (Star Formation) Mo yr^-1 Gpc^-3')
     ax4.tick_params(axis='y', labelcolor='red')
     ax4.set_yscale('log')
