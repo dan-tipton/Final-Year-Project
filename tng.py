@@ -15,6 +15,12 @@ from tqdm import tqdm
 from multiprocessing import RLock
 from scipy.stats import gaussian_kde
 from scipy.interpolate import make_interp_spline
+from scipy.optimize import curve_fit
+from astropy.cosmology import Planck18 as cosmo
+import astropy.units as u
+from astropy.cosmology import z_at_value
+from scipy.interpolate import interp1d
+from matplotlib.ticker import ScalarFormatter
 
 #region setup
 tqdm.set_lock(RLock())
@@ -113,7 +119,7 @@ def calculate_densities(snaps):
         total_sfrd = total_sfr / box_size
         sfrd_box.append(total_sfrd)
 
-        print(f"{snap}: z: {redshift}, snr: {total_snr}, snrd: {total_snrd}")
+        #print(f"{snap}: z: {redshift}, snr: {total_snr}, snrd: {total_snrd}")
 
     return redshifts, snrd_box, sfrd_box
 
@@ -152,56 +158,97 @@ def weighted_average(snaps):
     #ax5.set_yscale('log')
     #ax5.set_xscale('log')
 
-    plt.show()
+    #plt.show()
 
     return fig3
+
+def sfrd_func(z, a, b, c, d):
+    # takes madua and dickinson form but in Gpc^3
+    sfrd = a * pow((1 + z), b)/(1 + pow((1 + z)/c, d)) * 1e9
+    return sfrd
 
 # region Plot
 def plot_rates(snaps):
 
     redshifts, snrd_box, sfrd_box = calculate_densities(snaps)
-
+    
+    # sfr vs snr plots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
     ax1.set_title('SFR Vs SNR [per year and solar mass]')
-    ax1.set_xlabel('SFR Mo yr^-1')
-    ax1.set_ylabel('SNR Supernova yr^-1 Mo^-1')
+    ax1.set_xlabel('SFR (Star Formation) Mo yr^-1')
+    ax1.set_ylabel('SNR (Supernova) yr^-1 Mo^-1')
     ax1.set_xscale('log')
     ax1.set_yscale('log')
 
     ax2.set_title('SFR Vs SNR [per year, solar mass and volume]')
-    ax2.set_xlabel('SFR Mo yr^-1 Gpc^-3')
-    ax2.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
+    ax2.set_xlabel('SFRD (Star Formation) Mo yr^-1 Gpc^-3')
+    ax2.set_ylabel('SNRD (Supernova)  yr^-1 Mo^-1 Gpc^-3')
     ax2.set_xscale('log')
     ax2.set_yscale('log')
 
-    fig2, ax3 = plt.subplots()
-    sc1 = ax3.scatter(redshifts, snrd_box, color='blue', label='SNRD', marker='x')
-    ax3.set_title('Supernova Rate and Star Formation Rate across time')
+    # vs redshift plots
+    fig2, ax3 = plt.subplots(figsize=(8,5))
+    sc1 = ax3.scatter(redshifts, snrd_box, color='Red', label='SNRD', marker='x')
+    #ax3.set_title('Supernova Rate and Star Formation Rate across time')
     ax3.set_xlabel('Redshift')
-    ax3.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
-    ax3.tick_params(axis='y', labelcolor='blue')
+    ax3.set_ylabel(r'SNRd (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Gpc^{-3}}$]')
+    ax3.tick_params(axis='y', labelcolor='Red')
     ax3.set_yscale('log')
-
-    redshift_array = np.array(redshifts)[::-1]
-    snrd_array = np.array(snrd_box)[::-1]
-    sfrd_array = np.array(sfrd_box)[::-1]
-
-    x_linspace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
-    spline_snrd = make_interp_spline(redshift_array, snrd_array, k=3)
-    y_snrd = spline_snrd(x_linspace)
-    ax3.plot(x_linspace, y_snrd, color='blue',)
 
     # Create a second y-axis sharing the same x-axis
     ax4 = ax3.twinx()
-    sc2 = ax4.scatter(redshifts, sfrd_box, color='red', label='SFRD', marker='x')
-    ax3.set_ylabel('SFR (Star Formation) Mo yr^-1 Gpc^-3')
-    ax4.tick_params(axis='y', labelcolor='red')
+    sc2 = ax4.scatter(redshifts, sfrd_box, color='Green', label='SFRD', marker='x')
+    ax4.set_ylabel(r'SFRd (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Gpc^{-3}}$]')
+    ax4.tick_params(axis='y', labelcolor='Green')
     ax4.set_yscale('log')
 
-    spline_sfrd = make_interp_spline(redshift_array, sfrd_array, k=3)
-    y_sfrd = spline_sfrd(x_linspace)
-    ax4.plot(x_linspace, y_sfrd, color='red')
+    # find equation 
+    # order arrays to be ascedning 
+    redshift_array = np.array(redshifts)[::-1]
+    sfrd_array = np.array(sfrd_box)[::-1]
+    snrd_array = np.array(snrd_box)[::-1]
 
+    degree = 3
+    snrd_coeffs = np.polyfit(redshift_array, snrd_array, degree)
+    sfrd_coeffs = np.polyfit(redshift_array, sfrd_array, degree)
+    print(sfrd_coeffs)
+    
+    # use poly func build in bpassAnalysis 
+    redshift_linespace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
+    #snrd_poly = bpassAnalysis.polynomialCalc(snrd_coeffs, redshift_poly)
+    #sfrd_poly = bpassAnalysis.polynomialCalc(sfrd_coeffs, redshift_linespace)
+
+    #ax3.plot(redshift_linespace, snrd_poly, linestyle='--', marker=None, color='Red')
+    #ax4.plot(redshift_linespace, sfrd_poly, linestyle='--', marker=None, color='Green')
+
+    # madua and dickinson
+    # their fomrula ius given in Mpc3 we have Gpc3
+    csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * 1e9
+    line1, = ax4.plot(redshift_linespace, csfrh, linestyle='--', color='orange', label="SFRd (Madau & Dickinson 2014)")
+
+    # Initial guess use the value isn madau and dickinson 
+    p0 = [0.015, 2.7, 2.9, 5.6]
+    
+    # scipy curve fit
+    snrd_params, cov = curve_fit(sfrd_func, redshift_array, snrd_array, p0=p0)
+    snrd_fit = sfrd_func(redshift_linespace, *snrd_params)
+    line2, = ax3.plot(redshift_linespace, snrd_fit, linestyle='--', color='magenta', label="Estimate SNRD")
+    print(snrd_params)
+
+    sfrd_params, cov = curve_fit(sfrd_func, redshift_array, sfrd_array, p0=p0)
+    sfrd_fit = sfrd_func(redshift_linespace, *sfrd_params)
+    line3, = ax4.plot(redshift_linespace, sfrd_fit, linestyle='--', color='lime', label="Estimate SFRD")
+    print(sfrd_params)
+
+    lookback_time_grid = cosmo.lookback_time(redshift_array).value  # in Gyr
+    redshift_to_age = interp1d(redshift_array, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
+    age_to_redshift = interp1d(lookback_time_grid, redshift_array, bounds_error=False, fill_value="extrapolate")
+
+    ax5 = ax3.secondary_xaxis('top', functions=(redshift_to_age, age_to_redshift))
+    ax5.set_xlabel("Cosmic Lookback [Gyr]")
+    ax5.set_xscale('log')
+    ax5.xaxis.set_major_formatter(ScalarFormatter()) 
+    ax5.set_xticks([1, 2, 4, 6, 8, 10, 12, 14])
 
     for idx, snap in enumerate(snaps):
         # read rate files
@@ -218,15 +265,22 @@ def plot_rates(snaps):
 
     ax1.legend()
     ax2.legend()
-    fig2.legend()
+    ax3.legend([sc1, sc2, line1, line2, line3], ['SNRd (TNG)', 'SFRd (TNG)', 'Madau & Dickinson 2014', 'SNRd (Function)', 'SFRd (Function)'],
+            loc='upper center',
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=2,
+            frameon=False)
+    plt.subplots_adjust(bottom=0.25)
 
     dfig = weighted_average(snaps)
 
-    plt.show()
+    #plt.close(fig)
+    #plt.close(dfig)
+    plt.show()  # shows only fig2
 
     return fig, fig2
 
-snapshots = [2, 20, 32, 40, 50, 57, 66, 80, 98]
+snapshots = [2, 10, 20, 32, 40, 50, 57, 66, 80, 98]
 
 build = False
 
