@@ -14,12 +14,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
 from scipy.stats import gaussian_kde
+from scipy.interpolate import make_interp_spline
 
 #region setup
 tqdm.set_lock(RLock())
 
 MAX_WORKERS = 4
-colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'forestgreen', 'purple', 'pink', 'grey', 'black']
+colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'limegreen', 'purple', 'pink', 'grey', 'black']
 
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
@@ -174,19 +175,32 @@ def plot_rates(snaps):
     ax2.set_yscale('log')
 
     fig2, ax3 = plt.subplots()
-    sc1 = ax3.plot(redshifts, snrd_box, color='blue', label='SNRD', marker='x')
+    sc1 = ax3.scatter(redshifts, snrd_box, color='blue', label='SNRD', marker='x')
     ax3.set_title('Supernova Rate and Star Formation Rate across time')
     ax3.set_xlabel('Redshift')
     ax3.set_ylabel('SNR Supernova yr^-1 Mo^-1 Gpc^-3')
     ax3.tick_params(axis='y', labelcolor='blue')
     ax3.set_yscale('log')
 
+    redshift_array = np.array(redshifts)[::-1]
+    snrd_array = np.array(snrd_box)[::-1]
+    sfrd_array = np.array(sfrd_box)[::-1]
+
+    x_linspace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
+    spline_snrd = make_interp_spline(redshift_array, snrd_array, k=3)
+    y_snrd = spline_snrd(x_linspace)
+    ax3.plot(x_linspace, y_snrd, color='blue',)
+
     # Create a second y-axis sharing the same x-axis
     ax4 = ax3.twinx()
-    sc2 = ax4.plot(redshifts, sfrd_box, color='red', label='SFRD', marker='x')
+    sc2 = ax4.scatter(redshifts, sfrd_box, color='red', label='SFRD', marker='x')
     ax3.set_ylabel('SFR (Star Formation) Mo yr^-1 Gpc^-3')
     ax4.tick_params(axis='y', labelcolor='red')
     ax4.set_yscale('log')
+
+    spline_sfrd = make_interp_spline(redshift_array, sfrd_array, k=3)
+    y_sfrd = spline_sfrd(x_linspace)
+    ax4.plot(x_linspace, y_sfrd, color='red')
 
 
     for idx, snap in enumerate(snaps):
@@ -212,9 +226,9 @@ def plot_rates(snaps):
 
     return fig, fig2
 
-snapshots = [2, 20, 40, 50, 57, 66, 80, 98]
+snapshots = [2, 20, 32, 40, 50, 57, 66, 80, 98]
 
-build = True
+build = False
 
 if build == True:
     results = []
