@@ -113,7 +113,7 @@ def calculate_densities(snaps):
         # gives in comving currenly
         h = 0.6774
         #box_size_length = 75000 * 1e-6 / (h * (1+redshift))
-        box_size_length = 75000 * 1e-6 / h
+        box_size_length = 75000 * 1e-3 / h
         box_size = pow(box_size_length,3)
 
         # total snrd in the box 
@@ -124,6 +124,36 @@ def calculate_densities(snaps):
         snrd_box.append(total_snrd)
 
         # NEW SNRD Calculation (different units)
+        new_rate = subhalo_df["snr"] * subhalo_df["mass"]
+        mean_rate = np.mean(new_rate)
+        median_rate = np.median(new_rate)
+        max_rate = np.max(new_rate)
+        #print(f"Mean: {mean_rate:2e}, Median: {median_rate:2e}, Max: {max_rate:2e}")
+        total = np.sum(new_rate)
+        top10 = np.sum(np.sort(new_rate)[-10:])
+        rfract_max = max(new_rate) / total
+        rfract_ten = top10 / total
+
+        mfract_max = max(subhalo_df["mass"])/sum(subhalo_df["mass"])
+        mfract_ten = np.sum(np.sort(subhalo_df["mass"])[-10:])/sum(subhalo_df["mass"])
+
+        if mfract_ten > 0.5:
+            if mfract_max > 0.5:
+                print(f"Snapshot {snap}: Mass Dominated by massive: {mfract_max}")
+            else:
+                print(f"Snapshot {snap}: Mass Dominated by top 10: {mfract_ten}")
+
+        if rfract_ten > 0.5:
+            if rfract_max > 0.5:
+                print(f"Snapshot {snap}: Rate Dominated by massive: {rfract_max}")
+            else:
+               print(f"Snapshot {snap}: Rate Dominated by top 10: {rfract_ten}")
+        #print(" Fraction Max", max(new_rate) / total)
+        #print(" Fraction Top 10", top10 / total)
+        #print(" Length", len(new_rate))
+
+
+
         total_snr_times_mass = sum(subhalo_df["snr"] * subhalo_df["mass"])
         total_snrd_no_mass = total_snr_times_mass / box_size
         snrd_no_mass_box.append(total_snrd_no_mass)
@@ -143,7 +173,7 @@ def calculated_sfrd():
 
     # Calculate the box size properly (75000 ckpc/h)
     h = 0.6774
-    box_size_length = 75000 * 1e-6 / h
+    box_size_length = 75000 * 1e-3 / h
     box_size = pow(box_size_length,3)
 
     print("box size", box_size)
@@ -161,7 +191,6 @@ def calculated_sfrd():
 
 # region averages
 def weighted_average(snaps):
-    
     avg_snrd_density = []
     avg_sfrd_density = []
 
@@ -255,9 +284,10 @@ def plot_rates(snaps):
 
     # vs redshift plots
     fig2, ax3 = plt.subplots(figsize=(8,7))
+    fig3, ax3_1 = plt.subplots(figsize=(8,7))
     sc1 = ax3.scatter(redshifts, snrd_box, color='Red', label='SNRD', marker='x')
     ax3.set_xlabel('Redshift')
-    ax3.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Gpc^{-3}}$]')
+    ax3.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]')
     ax3.tick_params(axis='y', labelcolor='Red')
     ax3.set_yscale('log')
     sc1.set_visible(False)
@@ -266,7 +296,7 @@ def plot_rates(snaps):
     ax4 = ax3.twinx()
     sc2 = ax4.scatter(redshifts, sfrd_box, color='Green', label='SFRD (Top 1000)', marker='.')
     sc21 = ax4.scatter(redshifts, total_sfrds, color='forestgreen', label='SFRD (All)', marker='.')
-    ax4.set_ylabel(r'SFRd (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Gpc^{-3}}$]')
+    ax4.set_ylabel(r'SFRd (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]')
     ax4.tick_params(axis='y', labelcolor='Green')
     ax4.set_yscale('log')
     sc2.set_visible(False)
@@ -278,7 +308,7 @@ def plot_rates(snaps):
     ax7.spines["right"].set_visible(False)     
     ax7.yaxis.set_label_position('left')
     ax7.yaxis.tick_left()  
-    ax7.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Gpc^{-3}}$]')
+    ax7.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
     ax7.yaxis.set_label_coords(-0.25, 0.5)
     ax7.set_yscale('log')
     sc11 = ax7.scatter(redshifts, snrd_no_mass_box, color='dodgerblue', label='SNRD (New Units)', marker='x')
@@ -304,7 +334,7 @@ def plot_rates(snaps):
     # their fomrula ius given in Mpc3 we have Gpc3
     # convert from comoving to physical by multiplying by (1+z)^3
     redshift_linespace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
-    csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * 1e9 #* pow((1 + redshift_linespace),3)
+    csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
     # quoted core collapse efficiency scaling for salpeter
     # we will want a 
     csnrh = csfrh * 0.0068
