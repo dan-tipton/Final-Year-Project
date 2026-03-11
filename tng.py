@@ -301,7 +301,7 @@ def plt_labels_multiple(fig, axs, col):
 # set up cosmic history plots
 def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
 
-    fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'redshift', ylabel, logx=False, legendspace=space)
+    fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'Redshift (z)', ylabel, logx=False, legendspace=space)
 
     lookback_time_grid = cosmo.lookback_time(redshifts).value  # in Gyr
     redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
@@ -488,7 +488,7 @@ def cosmic_level(snaps):
     csnrh = csfrh * 0.0068
     
     # CSNRH plot
-    fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.25)
+    fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
     # scatters
     #sc_csnrh1 = ax_csnrh1.scatter(rev_redshifts, rev_snrd, color='Red', label='SNRD (TNG100)', marker='.')
     sc_csnrh2 = ax_csnrh1.scatter(rev_redshifts, rev_snrd_1000_scaled, color='firebrick', label="SNRD (TNG100)", marker='.')
@@ -502,7 +502,7 @@ def cosmic_level(snaps):
     ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle='--', color='Navy', label="SNRD (MD14 - Salpeter)")
 
     # CSFRH plot
-    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.15)
     # scatters
     #sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
     sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_all, color='lime', label='SFRD (TNG100 - All)', marker='.')
@@ -531,7 +531,8 @@ if build == True:
 halo_level(snapshots)
 cosmic_level(snapshots)
 
-for fig_num in plt.get_fignums():
-    plt.figure(fig_num).savefig(f"Data/Images/TNG/final/figure_{fig_num}.png", dpi=300, bbox_inches="tight")
+plot_names = ['halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
+for idx, fig_num in enumerate(plt.get_fignums()):
+    plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{plot_names[idx]}.png", dpi=300)
 
 #plt.show()
