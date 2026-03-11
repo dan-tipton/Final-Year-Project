@@ -27,12 +27,14 @@ from matplotlib.colors import LogNorm
 from matplotlib import cm
 from matplotlib.colors import Normalize 
 from scipy.interpolate import interpn
+from scipy.ndimage import gaussian_filter
 
 #region setup
 tqdm.set_lock(RLock())
 
 MAX_WORKERS = 4
 colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'limegreen', 'purple', 'pink', 'grey', 'black']
+colours = ['#800080',"#1a1a1a", "#3714ff", '#c0c0c0', "#1fb81f", '#40e0d0','#ffd700','#ffa500','#ff7f50',"#f53eff","#ff0000", '#87ceeb']
 
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
@@ -89,7 +91,8 @@ def build_rates(snap):
 
     return subhalo_df
 
-# region Calc Density
+# region Cosmic Densities
+# calculate the sfrd and snrd for the top 1000 subhalos at each redshift
 def calculate_densities(snaps):
 
     redshifts = []
@@ -122,18 +125,14 @@ def calculate_densities(snaps):
         # divide by the total box volume 
         total_snrd = total_snr / box_size
         snrd_box.append(total_snrd)
-
-        # NEW SNRD Calculation (different units)
+        
+        """
+        # find weighting 
         new_rate = subhalo_df["snr"] * subhalo_df["mass"]
-        mean_rate = np.mean(new_rate)
-        median_rate = np.median(new_rate)
-        max_rate = np.max(new_rate)
-        #print(f"Mean: {mean_rate:2e}, Median: {median_rate:2e}, Max: {max_rate:2e}")
         total = np.sum(new_rate)
         top10 = np.sum(np.sort(new_rate)[-10:])
         rfract_max = max(new_rate) / total
         rfract_ten = top10 / total
-
         mfract_max = max(subhalo_df["mass"])/sum(subhalo_df["mass"])
         mfract_ten = np.sum(np.sort(subhalo_df["mass"])[-10:])/sum(subhalo_df["mass"])
 
@@ -148,49 +147,39 @@ def calculate_densities(snaps):
                 print(f"Snapshot {snap}: Rate Dominated by massive: {rfract_max}")
             else:
                print(f"Snapshot {snap}: Rate Dominated by top 10: {rfract_ten}")
-        #print(" Fraction Max", max(new_rate) / total)
-        #print(" Fraction Top 10", top10 / total)
-        #print(" Length", len(new_rate))
-
-
-
+        """
+     
+        # NEW SNRD Calculation (different units)
+        # removes the mass dependance by multipying by the halo mass first 
         total_snr_times_mass = sum(subhalo_df["snr"] * subhalo_df["mass"])
         total_snrd_no_mass = total_snr_times_mass / box_size
         snrd_no_mass_box.append(total_snrd_no_mass)
 
         # total star formation in the box 
+        # note this only takes into account the top 1000 chosen
         total_sfr = sum(subhalo_df["sfr"])
         total_sfrd = total_sfr / box_size
         sfrd_box.append(total_sfrd)
 
-        #print(f"{snap}: z: {redshift}, snr: {total_snr}, snrd: {total_snrd}")
-
     return redshifts, snrd_box, sfrd_box, snrd_no_mass_box
 
-#region sfrd 
+#region sfrd (all subhalos)
 def calculated_sfrd():
     sfr_df = pd.read_csv(f"/Users/dan/Code/FYP/Data/TNG/total_sfr_per_redshift.csv")
 
-    # Calculate the box size properly (75000 ckpc/h)
     h = 0.6774
     box_size_length = 75000 * 1e-3 / h
     box_size = pow(box_size_length,3)
 
-    print("box size", box_size)
-
     sfrd_full = []
-
-    for idx, row in sfr_df.iterrows():
-        #if idx == 0:
-        #    continue
+    for _, row in sfr_df.iterrows():
         sfrd = row["sfr"]/box_size
         sfrd_full.append(sfrd)
 
-    return sfrd_full
-        
+    return sfrd_full       
 
 # region averages
-def weighted_average(snaps):
+def average_rates(snaps):
     avg_snrd_density = []
     avg_sfrd_density = []
 
@@ -256,12 +245,23 @@ def weighted_average(snaps):
     #plt.show()
     return fig3
 
+# region MD2014 Formula
 def sfrd_func(z, a, b, c, d):
     # takes madua and dickinson form but in Gpc^3
     sfrd = a * pow((1 + z), b)/(1 + pow((1 + z)/c, d)) * 1e9
     return sfrd
 
-# region Plot
+# curve fit values to MD2014
+def curve_md14(redshifts, array):
+    # Initial guess use the value isn madau and dickinson 
+    p0 = [0.015, 2.7, 2.9, 5.6]
+    params, cov = curve_fit(sfrd_func, redshifts, array, p0=p0)
+    x_linespace = np.linspace(redshifts.min(), redshifts.max(), 300)
+    md14_fit = sfrd_func(x_linespace, *params)
+
+    return md14_fit
+
+# Plot
 def plot_rates(snaps):
 
     redshifts, snrd_box, sfrd_box, snrd_no_mass_box = calculate_densities(snaps)
@@ -284,7 +284,6 @@ def plot_rates(snaps):
 
     # vs redshift plots
     fig2, ax3 = plt.subplots(figsize=(8,7))
-    fig3, ax3_1 = plt.subplots(figsize=(8,7))
     sc1 = ax3.scatter(redshifts, snrd_box, color='Red', label='SNRD', marker='x')
     ax3.set_xlabel('Redshift')
     ax3.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]')
@@ -293,7 +292,8 @@ def plot_rates(snaps):
     sc1.set_visible(False)
 
     # Create a second y-axis sharing the same x-axis
-    ax4 = ax3.twinx()
+    fig3, ax4 = plt.subplots(figsize=(8,7))
+    #ax4 = ax3.twinx()
     sc2 = ax4.scatter(redshifts, sfrd_box, color='Green', label='SFRD (Top 1000)', marker='.')
     sc21 = ax4.scatter(redshifts, total_sfrds, color='forestgreen', label='SFRD (All)', marker='.')
     ax4.set_ylabel(r'SFRd (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]')
@@ -304,15 +304,15 @@ def plot_rates(snaps):
 
     # create a third y axis and move left (different supernova rate units)
     ax7 = ax3.twinx()  # creates a second y-axis (normally right)
-    ax7.spines["left"].set_position(("axes", -0.15))  # shift to left
-    ax7.spines["right"].set_visible(False)     
-    ax7.yaxis.set_label_position('left')
-    ax7.yaxis.tick_left()  
+    #ax7.spines["left"].set_position(("axes", -0.15))  # shift to left
+    #ax7.spines["right"].set_visible(False)     
+    #ax7.yaxis.set_label_position('left')
+    #ax7.yaxis.tick_left()  
     ax7.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
-    ax7.yaxis.set_label_coords(-0.25, 0.5)
+    #ax7.yaxis.set_label_coords(-0.25, 0.5)
     ax7.set_yscale('log')
     sc11 = ax7.scatter(redshifts, snrd_no_mass_box, color='dodgerblue', label='SNRD (New Units)', marker='x')
-    ax7.tick_params(axis='y', colors='dodgerblue')
+    #ax7.tick_params(axis='y', colors='dodgerblue')
     sc11.set_visible(False)
 
     # find equation 
@@ -336,7 +336,7 @@ def plot_rates(snaps):
     redshift_linespace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
     csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
     # quoted core collapse efficiency scaling for salpeter
-    # we will want a 
+    # we will want a chabrier (need to caluclate it)
     csnrh = csfrh * 0.0068
     line1, = ax4.plot(redshift_linespace, csfrh, linestyle='--', color='lime', label="SFRD (Madau & Dickinson 2014)")
     line11, = ax7.plot(redshift_linespace, csnrh, linestyle='--', color='aqua', label="SNRD (Madau & Dickinson 2014)")
@@ -375,8 +375,6 @@ def plot_rates(snaps):
     sfrd_all_fit = sfrd_func(redshift_linespace, *sfrd_all_params)
     line4, = ax4.plot(redshift_linespace, sfrd_all_fit, linestyle='--', color='green', label="Estimate SFRD (All)")
     print("sfrd all params", sfrd_all_params)
-
-    print('HERE', max(csfrh), max(sfrd_all_fit))
 
     lookback_time_grid = cosmo.lookback_time(redshift_array).value  # in Gyr
     redshift_to_age = interp1d(redshift_array, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
@@ -446,7 +444,7 @@ def plot_rates(snaps):
 
     fig2.subplots_adjust(bottom=0.3, left=0.2)
 
-    dfig = weighted_average(snaps)
+    dfig = average_rates(snaps)
 
     plt.close(dfig)
     plt.close(fig)
@@ -456,7 +454,200 @@ def plot_rates(snaps):
 
     return fig, fig2
 
-# removed redshift 12 for now
+# generate figure and axes
+def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=None):
+    fig, ax = plt.subplots(figsize=(size1,size2))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if logx: 
+        ax.set_xscale('log')
+
+    if logy: 
+        ax.set_yscale('log')
+
+    if legendspace is not None:
+        fig.subplots_adjust(bottom=legendspace)
+
+    return fig, ax
+
+# set labels for axes 
+def plt_labels(fig, ax, col):
+    handles, labels = ax.get_legend_handles_labels()
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)
+
+    return fig, ax
+
+# average halo level densities
+def average_rate_densities(snrd, sfrd):
+    av_snrd = sum(snrd)/len(snrd)
+    av_sfrd = sum(sfrd)/len(sfrd)
+
+    return av_snrd, av_sfrd
+
+# line fit
+def line_fit(x, y):
+    # fit line
+    x_line = np.linspace(np.array(x).min(), np.array(x).max(), 200)
+    m,c = np.polyfit(x, y, 1) 
+    y_line = m * x_line + c
+
+    return x_line, y_line, m, c
+
+# region plot halo level
+def halo_level(snaps):
+    
+    # set up figures and axes
+    fig_halo_rate, ax_hr = plt_helper(8,7, r'SFR (Star Formation) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.2)
+    fig_halo_density, ax_hrd = plt_helper(8,7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
+    fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]')
+    fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
+    fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Gpc^{-3}}$]', legendspace=0.15)
+
+    all_snrd = []
+    all_sfrd = []
+
+    all_av_snrd = []
+    all_av_sfrd = []
+
+    for idx, snap in enumerate(snaps):
+        # read rate files
+        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        subhalo_df = pd.read_csv(rates_file)
+
+        if len(subhalo_df) <= 1:
+            continue
+        redshift = subhalo_df['z'].iloc[0]
+
+        # plot snr vs sfr and snrd vs sfrd (halo level)
+        # convert to Mpc3 from Gpc3 => times 1e-9
+        sfrd = subhalo_df['sfrd']*1e-9
+        snrd = subhalo_df["snrd"]*1e-9
+        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        ax_hrd.scatter(sfrd, snrd, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+
+        # add to list to be used in histogram
+        all_sfrd.append(sfrd)
+        all_snrd.append(snrd)
+
+        # add to average list 
+        av_snrd, av_sfrd = average_rate_densities(snrd, sfrd)
+        all_av_snrd.append(av_snrd)
+        all_av_sfrd.append(av_sfrd)
+
+    # Density Scatter of all points
+    final_sfrd = pd.concat(all_sfrd, ignore_index=True)
+    final_snrd = pd.concat(all_snrd, ignore_index=True)
+    x = np.array(final_sfrd.values)
+    y = np.array(final_snrd.values)
+    
+    # mask out zeros
+    mask = (x > 0) & (y > 0)
+    x_pos = x[mask]
+    y_pos = y[mask]
+
+    # log colour bins
+    xbins = np.logspace(np.log10(x_pos.min()), np.log10(x_pos.max()), 150)
+    ybins = np.logspace(np.log10(y_pos.min()), np.log10(y_pos.max()), 150)
+    counts, xedges, yedges, im = ax_hist.hist2d(x_pos, y_pos, bins=[xbins, ybins], cmap='viridis', norm=LogNorm())
+    cbar = plt.colorbar(im, ax=ax_hist)
+    cbar.set_label("Point Density Across All Redshifts")
+
+    # Find which bin each point falls into
+    x_indices = np.searchsorted(xedges, x_pos, side='right') - 1
+    y_indices = np.searchsorted(yedges, y_pos, side='right') - 1
+    x_indices = np.clip(x_indices, 0, counts.shape[0] - 1)
+    y_indices = np.clip(y_indices, 0, counts.shape[1] - 1)
+
+    # Get density and filter
+    point_densities = counts[x_indices, y_indices]
+    density_threshold = 5
+    density_mask = point_densities >= density_threshold
+
+    # filter and plot
+    x_filtered = x_pos[density_mask]
+    y_filtered = y_pos[density_mask]
+    ax_dense.scatter(x_filtered, y_filtered, color='black', label=f'Scatter (Point Density > {density_threshold})', marker='.', s=0.3)
+
+    # Fit a straight line in log-space
+    log_x = np.log10(x_filtered)
+    log_y = np.log10(y_filtered)
+    coeffs = np.polyfit(log_x, log_y, 1)
+    slope, intercept = coeffs
+    x_line = np.logspace(np.log10(x_filtered.min()), np.log10(x_filtered.max()), 200)
+    y_line = 10**(slope * np.log10(x_line) + intercept)
+    ax_dense.plot(x_line, y_line, color='red', linewidth=1.5, label=f'Slope={slope:.2f}, Intercept={intercept:.2f}')
+
+    # average plots 
+    x_line, y_line, av_slope, av_intercept = line_fit(all_av_sfrd, all_av_snrd)
+    # standard deviation ddof=1 gives sample std
+    snrd_dev = np.std(all_av_snrd, ddof=1)
+    # standard error of the mean
+    snrd_yerr = snrd_dev / np.sqrt(len(all_av_snrd))
+    ax_av.errorbar(all_av_sfrd, all_av_snrd, yerr=snrd_yerr, color='black', fmt='x', capsize=5, label="Average")
+    ax_av.plot(x_line, y_line, linestyle='--', color='blue', label=f'Slope={av_slope:.2f}, Intercept={av_intercept:.2f}')
+
+    # labels
+    plt_labels(fig_halo_rate, ax_hr, 4)
+    plt_labels(fig_halo_density, ax_hrd, 4)
+    plt_labels(fig_dense, ax_dense, 2)
+    plt_labels(fig_av, ax_av, 2)
+    plt_labels(fig_av, ax_av)
+
+    plt.show()
+    return True
+
+# region Plot Cosmic Level
+def cosmic_level(snaps):
+    redshifts, snrd, sfrd_1000, snrd_alt = calculate_densities(snaps)
+    sfrd_all = calculated_sfrd()
+
+    # order arrays to be ascedning 
+    redshift_array = np.array(redshifts)[::-1]
+    # sfrd
+    rev_sfrd_1000 = np.array(sfrd_1000)[::-1] 
+    rev_sfrd_all= np.array(sfrd_all)[::-1] 
+    # snrd
+    rev_snrd = np.array(snrd)[::-1]
+    rev_snrd_alt = np.array(snrd_alt)[::-1]
+
+    # scaling
+    # calculate a scale factor for each redshift value to convert from top 1000 halos to all halos
+    # SFRD values are compared between the two data sets 
+    # this can be applied to the SNRD to get SNRD estimates for the whole box 
+    sfrd_scaling = rev_sfrd_all/rev_sfrd_1000
+    rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
+    rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
+
+    # madau and dickinson 2014
+    # their fomrula ius given in Mpc3 we have Gpc3
+    # convert from comoving to physical by multiplying by (1+z)^3
+    redshift_linespace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
+    csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
+
+    # snrd curve fits
+    md14_snrd_1000 = curve_md14(redshifts, rev_snrd_1000)
+    md14_snrd_scaled = curve_md14(redshifts, rev_snrd_1000)
+    md14_snrd_alt = curve_md14(redshifts, rev_snrd_1000)
+
+    # sfrd 
+    md14_snrd_1000 = curve_md14(redshifts, rev_snrd_1000)
+    md14_snrd_all = curve_md14(redshifts, rev_snrd_1000)
+
+    
+    # quoted core collapse efficiency scaling for salpeter
+    # we will want a chabrier (need to caluclate it)
+    # use IMFs defined previously 
+    # formula is integral imf / integral mass * imf 
+    csnrh = csfrh * 0.0068
+    
+    # SFRD plot
+    line11, = ax7.plot(redshift_linespace, csnrh, linestyle='--', color='aqua', label="SNRD (Madau & Dickinson 2014)")
+
+    # SNRD plot 
+    line1, = ax4.plot(redshift_linespace, csfrh, linestyle='--', color='lime', label="SFRD (Madau & Dickinson 2014)")
+
+
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
 build = False
@@ -468,4 +659,6 @@ if build == True:
         for f in tqdm(as_completed(futures), total=len(futures)):
             results.append(f.result())
 
-dumb1, dumb2 = plot_rates(snapshots)
+#dumb1, dumb2 = plot_rates(snapshots)
+
+dummy = halo_level(snapshots)
