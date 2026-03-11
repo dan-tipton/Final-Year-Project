@@ -11,6 +11,7 @@ import numpy.ma as ma
 
 from Objects.BPASSAnalysis import BPASSAnalysis
 from Objects.BPASSDataFormatter import BPASSDataFormatter
+from Objects.IMF import IMF
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
@@ -39,6 +40,8 @@ colours = ['#800080',"#1a1a1a", "#3714ff", '#c0c0c0', "#1fb81f", '#40e0d0','#ffd
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
 bpassAnalysis = BPASSAnalysis(allSupernovaArray)
+normIMF = IMF(1)
+imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
 rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 
