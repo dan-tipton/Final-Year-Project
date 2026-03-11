@@ -478,10 +478,22 @@ def plt_labels(fig, ax, col):
 
     return fig, ax
 
-# set up cosmic history plots
-def plt_cosmo(redshifts, ylabel, ytwin=None):
+# set labels for axes 
+def plt_labels_multiple(fig, axs, col):
+    handles = []
+    labels = []
+    for ax in axs:
+        handle, label = ax.get_legend_handles_labels()
+        handles.extend(handle)
+        labels.extend(label)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)
 
-    fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'redshift', ylabel, logx=False, legendspace=0.15)
+    return fig, axs
+
+# set up cosmic history plots
+def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
+
+    fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'redshift', ylabel, logx=False, legendspace=space)
 
     lookback_time_grid = cosmo.lookback_time(redshifts).value  # in Gyr
     redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
@@ -503,7 +515,6 @@ def plt_cosmo(redshifts, ylabel, ytwin=None):
         ax_cosmo2 = None
     
     ax_cosmo1.set_yscale('log')
-    ax_cosmo2.set_yscale('log')
 
     return fig_cosmo, ax_cosmo1, ax_cosmo2
 
@@ -671,7 +682,7 @@ def cosmic_level(snaps):
     csnrh = csfrh * 0.0068
     
     # CSNRH plot
-    fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
+    fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.25)
     # scatters
     sc_csnrh1 = ax_csnrh1.scatter(rev_redshifts, rev_snrd, color='Red', label='SNRD (TNG100)', marker='.')
     sc_csnrh2 = ax_csnrh1.scatter(rev_redshifts, rev_snrd_1000_scaled, color='firebrick', label="SNRD (TNG100 Scaled)", marker='.')
@@ -685,16 +696,16 @@ def cosmic_level(snaps):
     ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle='--', color='Navy', label="SNRD (MD14 - Salpeter)")
 
     # CSFRH plot
-    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]')
+    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.2)
     # scatters
-    sc2 = ax_csfrd.scatter(redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
-    sc2 = ax_csfrd.scatter(redshifts, rev_sfrd_all, color='lime', label='SFRD (TNG100 - All)', marker='.')
+    sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
+    sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_all, color='lime', label='SFRD (TNG100 - All)', marker='.')
     # lines
-    ls_csfrh1, = ax_csnrh2.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="SFRD (TNG100 - Top 1000)")
-    ls_csfrh2, = ax_csnrh2.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="SFRD (TNG100 - All)")
+    ls_csfrh1, = ax_csfrd.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="SFRD (TNG100 - Top 1000)")
+    ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="SFRD (TNG100 - All)")
     ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='--', color='forestgreen', label="SFRD (Madau & Dickinson 2014)")
 
-    plt_labels(fig_csnrh, ax_csnrh1, 2)
+    plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
     plt.show()
