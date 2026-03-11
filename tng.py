@@ -478,6 +478,35 @@ def plt_labels(fig, ax, col):
 
     return fig, ax
 
+# set up cosmic history plots
+def plt_cosmo(redshifts, ylabel, ytwin=None):
+
+    fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'redshift', ylabel, logx=False, legendspace=0.15)
+
+    lookback_time_grid = cosmo.lookback_time(redshifts).value  # in Gyr
+    redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
+    age_to_redshift = interp1d(lookback_time_grid, redshifts, bounds_error=False, fill_value="extrapolate")
+
+    ax_cosmic = ax_cosmo1.secondary_xaxis('top', functions=(redshift_to_age, age_to_redshift))
+    ax_cosmic.set_xlabel("Cosmic Lookback [Gyr]")
+    ax_cosmic.set_xscale('log')
+    ax_cosmic.xaxis.set_major_formatter(ScalarFormatter()) 
+    ax_cosmic.set_xticks([1, 2, 4, 6, 8, 10, 12, 14])
+
+    if ytwin is not None:
+        ax_cosmo2 = ax_cosmo1.twinx()
+        ax_cosmo2.set_ylabel(ytwin)
+        ax_cosmo1.tick_params(axis='y', labelcolor='Red')
+        ax_cosmo2.tick_params(axis='y', labelcolor='Blue')
+        ax_cosmo2.set_yscale('log')
+    else:
+        ax_cosmo2 = None
+    
+    ax_cosmo1.set_yscale('log')
+    ax_cosmo2.set_yscale('log')
+
+    return fig_cosmo, ax_cosmo1, ax_cosmo2
+
 # average halo level densities
 def average_rate_densities(snrd, sfrd):
     av_snrd = sum(snrd)/len(snrd)
@@ -603,7 +632,7 @@ def cosmic_level(snaps):
     sfrd_all = calculated_sfrd()
 
     # order arrays to be ascedning 
-    redshift_array = np.array(redshifts)[::-1]
+    rev_redshifts = np.array(redshifts)[::-1]
     # sfrd
     rev_sfrd_1000 = np.array(sfrd_1000)[::-1] 
     rev_sfrd_all= np.array(sfrd_all)[::-1] 
@@ -622,31 +651,55 @@ def cosmic_level(snaps):
     # madau and dickinson 2014
     # their fomrula ius given in Mpc3 we have Gpc3
     # convert from comoving to physical by multiplying by (1+z)^3
-    redshift_linespace = np.linspace(redshift_array.min(), redshift_array.max(), 300)
+    redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
     csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
 
     # snrd curve fits
-    md14_snrd_1000 = curve_md14(redshifts, rev_snrd_1000)
-    md14_snrd_scaled = curve_md14(redshifts, rev_snrd_1000)
-    md14_snrd_alt = curve_md14(redshifts, rev_snrd_1000)
+    md14_snrd = curve_md14(rev_redshifts, rev_snrd)
+    md14_snrd_alt = curve_md14(rev_redshifts, rev_snrd_alt)
+    md14_snrd_scaled = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
+    md14_snrd_alt_scaled = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
 
     # sfrd 
-    md14_snrd_1000 = curve_md14(redshifts, rev_snrd_1000)
-    md14_snrd_all = curve_md14(redshifts, rev_snrd_1000)
+    md14_snrd_1000 = curve_md14(rev_redshifts, rev_sfrd_1000)
+    md14_snrd_all = curve_md14(rev_redshifts, rev_sfrd_all)
 
-    
     # quoted core collapse efficiency scaling for salpeter
     # we will want a chabrier (need to caluclate it)
     # use IMFs defined previously 
     # formula is integral imf / integral mass * imf 
     csnrh = csfrh * 0.0068
     
-    # SFRD plot
-    line11, = ax7.plot(redshift_linespace, csnrh, linestyle='--', color='aqua', label="SNRD (Madau & Dickinson 2014)")
+    # CSNRH plot
+    fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
+    # scatters
+    sc_csnrh1 = ax_csnrh1.scatter(rev_redshifts, rev_snrd, color='Red', label='SNRD (TNG100)', marker='.')
+    sc_csnrh2 = ax_csnrh1.scatter(rev_redshifts, rev_snrd_1000_scaled, color='firebrick', label="SNRD (TNG100 Scaled)", marker='.')
+    sc_csnrh3 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_alt, color='Blue', label='SNRD (TNG100 - no mass)', marker='.')
+    sc_csnrh4 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_alt_scaled, color='Aqua', label='SNRD (TNG100 Scaled - no mass)', marker='.')
+    # lines
+    ls_csnrh1, = ax_csnrh1.plot(redshift_linespace, md14_snrd, linestyle='--', color='Red', label="SNRD (TNG100)")
+    ls_csnrh2, = ax_csnrh1.plot(redshift_linespace, md14_snrd_scaled, linestyle='--', color='firebrick', label="SNRD (TNG100 Scaled)")
+    ls_csnrh3, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt, linestyle='--', color='Blue', label="SNRD (TNG100 - no mass)")
+    ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="SNRD (TNG100 Scaled - no mass)")
+    ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle='--', color='Navy', label="SNRD (MD14 - Salpeter)")
 
-    # SNRD plot 
-    line1, = ax4.plot(redshift_linespace, csfrh, linestyle='--', color='lime', label="SFRD (Madau & Dickinson 2014)")
+    # CSFRH plot
+    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]')
+    # scatters
+    sc2 = ax_csfrd.scatter(redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
+    sc2 = ax_csfrd.scatter(redshifts, rev_sfrd_all, color='lime', label='SFRD (TNG100 - All)', marker='.')
+    # lines
+    ls_csfrh1, = ax_csnrh2.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="SFRD (TNG100 - Top 1000)")
+    ls_csfrh2, = ax_csnrh2.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="SFRD (TNG100 - All)")
+    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='--', color='forestgreen', label="SFRD (Madau & Dickinson 2014)")
 
+    plt_labels(fig_csnrh, ax_csnrh1, 2)
+    plt_labels(fig_csfrh, ax_csfrd, 2)
+
+    plt.show()
+
+    return True
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
@@ -661,4 +714,5 @@ if build == True:
 
 #dumb1, dumb2 = plot_rates(snapshots)
 
-dummy = halo_level(snapshots)
+#dummy = halo_level(snapshots)
+dummy2 = cosmic_level(snapshots)
