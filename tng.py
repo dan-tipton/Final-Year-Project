@@ -8,6 +8,7 @@ import time
 import tkinter as tk
 import glob
 import numpy.ma as ma
+import astropy.units as u
 
 from Objects.BPASSAnalysis import BPASSAnalysis
 from Objects.BPASSDataFormatter import BPASSDataFormatter
@@ -15,11 +16,11 @@ from Objects.IMF import IMF
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
+from scipy import integrate
 from scipy.stats import gaussian_kde
 from scipy.interpolate import make_interp_spline
 from scipy.optimize import curve_fit
 from astropy.cosmology import Planck18 as cosmo
-import astropy.units as u
 from astropy.cosmology import z_at_value
 from scipy.interpolate import interp1d
 from matplotlib.ticker import ScalarFormatter
@@ -91,7 +92,7 @@ def build_rates(snap):
 
     print(f"    {len(subhalo_rows)} subhalos with postive rates")
     subhalo_df = pd.DataFrame(subhalo_rows)
-    subhalo_df.to_csv(f"/Users/dan/Code/FYP/Data/TNG/Rates/snapshot{snap}_rates.csv")
+    subhalo_df.to_csv(f"/Users/dan/Code/FYP/Data/TNG/Rates/Ic/snapshot{snap}_rates.csv")
 
     return subhalo_df
 
@@ -446,6 +447,18 @@ def halo_level(snaps):
 
     return True
 
+def supernova_efficiency(_imf):
+    # Madau & Dickinson 2014
+    # k_CC = integral(phi(m), m_min, m_max) / integral(m * phi(m), m_l, m_u)
+    # up to 20 solar masses for type 2 
+    # 25 to 80 solar mass for type 1b/c
+    # bpass m_max is 100
+    # boass m_min is 1
+    numerator, _ = integrate.quad(_imf, 8, 100)
+    denominator, _ = integrate.quad(lambda m: m * _imf(m), 1, 100)
+
+    return numerator/denominator
+
 # region Plot Cosmic Level
 def cosmic_level(snaps):
     redshifts, snrd, sfrd_1000, snrd_alt = calculate_densities(snaps)
@@ -489,6 +502,21 @@ def cosmic_level(snaps):
     # use IMFs defined previously 
     # formula is integral imf / integral mass * imf 
     csnrh = csfrh * 0.0068
+
+    kcc_salpeter = supernova_efficiency(imf.salpeter)
+    kcc_kroupa = supernova_efficiency(imf.kroupa)
+    kcc_chabrier = supernova_efficiency(imf.chabrier)
+    kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem)
+
+    csnrh_salpeter = csfrh * kcc_salpeter
+    csnrh_kroupa = csfrh * kcc_kroupa
+    csnrh_chabrier = csfrh * kcc_chabrier
+    csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
+
+    print(kcc_salpeter)
+    print(kcc_kroupa)
+    print(kcc_chabrier)
+    print(kcc_chabrier_sys)
     
     # CSNRH plot
     fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
@@ -503,6 +531,10 @@ def cosmic_level(snaps):
     #ls_csnrh3, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt, linestyle='--', color='Blue', label="SNRD (TNG100 - no mass)")
     ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="SNRD (TNG100 - Alternate)")
     ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle='--', color='Navy', label="SNRD (MD14 - Salpeter)")
+    ls_csnrh6, = ax_csnrh2.plot(redshift_linespace, csnrh_salpeter, linestyle=':', color='lime', label="SNRD (MD14 - Salpeter)")
+    ls_csnrh7, = ax_csnrh2.plot(redshift_linespace, csnrh_kroupa, linestyle=':', color='red', label="SNRD (MD14 - Kroupa)")
+    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle=':', color='gold', label="SNRD (MD14 - Chabrier)")
+    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier_sys, linestyle=':', color='black', label="SNRD (MD14 - Chabrier System)")
 
     # CSFRH plot
     fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.15)
@@ -517,7 +549,7 @@ def cosmic_level(snaps):
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
-    return True
+    return redshift_linespace, md14_snrd_scaled, md14_snrd_alt_scaled
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
@@ -530,12 +562,24 @@ if build == True:
         for f in tqdm(as_completed(futures), total=len(futures)):
             results.append(f.result())
 
+all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
+#sn_type = "Ic"
 
-halo_level(snapshots)
-cosmic_level(snapshots)
+d = []
+for sn_type in all_sn_types:
+    rates_folder = rates_folder + f"/{sn_type}"
 
-plot_names = ['halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
-for idx, fig_num in enumerate(plt.get_fignums()):
-    plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{plot_names[idx]}.png", dpi=300)
+    halo_level(snapshots)
+    zs, snrd, snrd_alt = cosmic_level(snapshots)
+
+    d.append({
+        'type': sn_type,
+        'snrd': snrd,
+        
+    })
+
+    plot_names = ['halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
+    for idx, fig_num in enumerate(plt.get_fignums()):
+        plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
 
 #plt.show()

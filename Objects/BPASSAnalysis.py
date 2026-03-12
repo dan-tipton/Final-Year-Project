@@ -480,7 +480,8 @@ class BPASSAnalysis():
             inputAge = row['age_bin']
 
             # slowing down code for no reason by reassigning or is it minimal?
-            sn_rate_data = self.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 0)
+            # snType: 0: IIP, 1: II-Other, 2: Ib, 3: Ic, 4: Long-GRB, 5: Pair-Instab, 6: Low-mass
+            sn_rate_data = self.generateSupernovaRate(0, "_chab100", "bin", inputMtl, inputAge, 0)
             sn_rate_data['x'] = row['x']
             sn_rate_data['y'] = row['y']
             sn_rate_data['Redshift'] = row['redshift']
