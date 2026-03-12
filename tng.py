@@ -177,11 +177,13 @@ def calculated_sfrd():
     box_size = pow(box_size_length,3)
 
     sfrd_full = []
+    redshifts = []
     for _, row in sfr_df.iterrows():
         sfrd = row["sfr"]/box_size
         sfrd_full.append(sfrd)
+        redshifts.append(row['z'])
 
-    return sfrd_full       
+    return sfrd_full, redshifts     
 
 # region averages
 def average_rates(snaps):
@@ -462,7 +464,7 @@ def supernova_efficiency(_imf):
 # region Plot Cosmic Level
 def cosmic_level(snaps):
     redshifts, snrd, sfrd_1000, snrd_alt = calculate_densities(snaps)
-    sfrd_all = calculated_sfrd()
+    sfrd_all, _ = calculated_sfrd()
 
     # order arrays to be ascedning 
     rev_redshifts = np.array(redshifts)[::-1]
@@ -549,7 +551,7 @@ def cosmic_level(snaps):
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
-    return redshift_linespace, md14_snrd_scaled, md14_snrd_alt_scaled
+    return md14_snrd_scaled, md14_snrd_alt_scaled
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
@@ -565,21 +567,26 @@ if build == True:
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 #sn_type = "Ic"
 
-d = []
+_, redshifts = calculated_sfrd()
+rev_redshifts = np.array(redshifts)[::-1]
+redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
+fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+
 for sn_type in all_sn_types:
-    rates_folder = rates_folder + f"/{sn_type}"
+    rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
 
     halo_level(snapshots)
-    zs, snrd, snrd_alt = cosmic_level(snapshots)
+    snrd, snrd_alt = cosmic_level(snapshots)
 
-    d.append({
-        'type': sn_type,
-        'snrd': snrd,
-        
-    })
-
-    plot_names = ['halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
+    plot_names = ['1', '2', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
-        plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
+        if idx > 1:
+            curr_fig = plt.figure(fig_num)
+            plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
+            plt.close(curr_fig)
 
-#plt.show()
+    ax_types1.plot(redshift_linespace, snrd, label=f'{sn_type}')
+    ax_types2.plot(redshift_linespace, snrd_alt, label=f'{sn_type}')
+
+plt.show()
