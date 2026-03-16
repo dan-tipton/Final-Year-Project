@@ -517,15 +517,14 @@ def cosmic_level(snaps):
     csnrh_chabrier = csfrh * kcc_chabrier
     csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
 
-    print(kcc_salpeter)
-    print(kcc_kroupa)
-    print(kcc_chabrier)
-    print(kcc_chabrier_sys)
-
     # trace sfrd using snrd 
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
     csfrh_kcc_md14 = md14_snrd_alt_scaled / 0.0068
     csfrh_kcc_chabrier = md14_snrd_alt_scaled / kcc_chabrier
+    csfrh_kcc_chabrier_raw = rev_snrd_alt_scaled / kcc_chabrier
+
+    #csfrh_kcc_md14_noscale = md14_snrd_alt / 0.0068
+    #csfrh_kcc_chabrier_noscale  = md14_snrd_alt / kcc_chabrier
     
     # CSNRH plot
     fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
@@ -539,23 +538,26 @@ def cosmic_level(snaps):
     ls_csnrh2, = ax_csnrh1.plot(redshift_linespace, md14_snrd_scaled, linestyle='--', color='firebrick', label="TNG100")
     #ls_csnrh3, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt, linestyle='--', color='Blue', label="SNRD (TNG100 - no mass)")
     ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="TNG100 - Alternate")
-    ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle='--', color='Navy', label="MD14 - Salpeter")
+    #ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle=':', color='Navy', label="MD14 - Salpeter")
     #ls_csnrh6, = ax_csnrh2.plot(redshift_linespace, csnrh_salpeter, linestyle=':', color='lime', label="SNRD (MD14 - Salpeter)")
     #ls_csnrh7, = ax_csnrh2.plot(redshift_linespace, csnrh_kroupa, linestyle=':', color='red', label="SNRD (MD14 - Kroupa)")
-    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle=':', color='gold', label="MD14 - Chabrier")
-    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier_sys, linestyle=':', color='black', label="MD14 - Chabrier System")
+    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle='-', color='blue', label="MD14 - Chabrier")
+    #ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier_sys, linestyle=':', color='black', label="MD14 - Chabrier System")
 
     # CSFRH plot
-    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.15)
+    fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.20)
     # scatters
-    #sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
+    #sc1 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
     sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_all, color='lime', label='TNG100 - All', marker='.')
+    sc3 = ax_csfrd.scatter(rev_redshifts, csfrh_kcc_chabrier_raw, color='gold', label="TNG100 - Kcc Chabrier", marker='.')
     # lines
-    #ls_csfrh1, = ax_csfrd.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="SFRD (TNG100 - Top 1000)")
-    ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="TNG100)")
-    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='--', color='forestgreen', label="Madau & Dickinson 2014)")
-    ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14, linestyle='--', color='red', label="TNG100 - Kcc MD14)")
-    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier)")
+    #ls_csfrh1, = ax_csfrd.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="TNG100 - Top 1000")
+    ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="TNG100 - All")
+    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='-', color='teal', label="Madau & Dickinson 2014)")
+    #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14, linestyle='--', color='red', label="TNG100 - Kcc MD14)")
+    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier")
+    #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14_noscale, linestyle='--', color='red', label="TNG100 - Kcc MD14 no scale)")
+    #ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier_noscale, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier no scale)")
 
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
