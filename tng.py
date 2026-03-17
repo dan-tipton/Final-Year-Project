@@ -31,6 +31,11 @@ from matplotlib.colors import Normalize
 from scipy.interpolate import interpn
 from scipy.ndimage import gaussian_filter
 
+import warnings
+
+# Ignore only this type of user warning
+warnings.filterwarnings("ignore", message=".*non-positive xlim.*")
+
 #region setup
 tqdm.set_lock(RLock())
 
@@ -43,6 +48,8 @@ allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormatte
 bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
+
+print('here', imf.k1, imf.k2, imf.k3)
 
 rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 
@@ -405,7 +412,7 @@ def halo_level(snaps):
     xbins = np.logspace(np.log10(x_pos.min()), np.log10(x_pos.max()), 150)
     ybins = np.logspace(np.log10(y_pos.min()), np.log10(y_pos.max()), 150)
     counts, xedges, yedges, im = ax_hist.hist2d(x_pos, y_pos, bins=[xbins, ybins], cmap='viridis', norm=LogNorm())
-    cbar = plt.colorbar(im, ax=ax_hist)
+    cbar = fig_hist.colorbar(im, ax=ax_hist)
     cbar.set_label("Point Density Across All Redshifts")
 
     # Find which bin each point falls into
@@ -450,20 +457,23 @@ def halo_level(snaps):
 
     return True
 
-def supernova_efficiency(_imf):
+def supernova_efficiency(_imf, sn_type=2):
     # Madau & Dickinson 2014
     # k_CC = integral(phi(m), m_min, m_max) / integral(m * phi(m), m_l, m_u)
-    # up to 20 solar masses for type 2 
-    # 25 to 80 solar mass for type 1b/c
-    # bpass m_max is 100
-    # boass m_min is 1
-    numerator, _ = integrate.quad(_imf, 8, 100)
+    # bpass - max = 100, min = 1
+
     denominator, _ = integrate.quad(lambda m: m * _imf(m), 1, 100)
+    if sn_type == 2:
+        # up to 25 solar masses for type 2 
+        numerator, _ = integrate.quad(_imf, 8, 25)
+    elif sn_type == 1:
+        # 25 to 100 solar mass for type 1b/c
+        numerator, _ = integrate.quad(_imf, 25, 100)
 
     return numerator/denominator
 
 # region Plot Cosmic Level
-def cosmic_level(snaps):
+def cosmic_level(snaps, kcc_type):
     redshifts, snrd, sfrd_1000, snrd_alt = calculate_densities(snaps)
     sfrd_all, _ = calculated_sfrd()
 
@@ -507,10 +517,15 @@ def cosmic_level(snaps):
     # kcc given in Mo-1 
     csnrh = csfrh * 0.0068
 
-    kcc_salpeter = supernova_efficiency(imf.salpeter)
-    kcc_kroupa = supernova_efficiency(imf.kroupa)
-    kcc_chabrier = supernova_efficiency(imf.chabrier)
-    kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem)
+    kcc_salpeter = supernova_efficiency(imf.salpeter, kcc_type)
+    kcc_kroupa = supernova_efficiency(imf.kroupa, kcc_type)
+    kcc_chabrier = supernova_efficiency(imf.chabrier, kcc_type)
+    kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
+
+    print("kcc: ", kcc_type)
+    print("  salpeter: ", kcc_salpeter)
+    print("  chabrier: ", kcc_chabrier)
+
 
     csnrh_salpeter = csfrh * kcc_salpeter
     csnrh_kroupa = csfrh * kcc_kroupa
@@ -541,7 +556,7 @@ def cosmic_level(snaps):
     #ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle=':', color='Navy', label="MD14 - Salpeter")
     #ls_csnrh6, = ax_csnrh2.plot(redshift_linespace, csnrh_salpeter, linestyle=':', color='lime', label="SNRD (MD14 - Salpeter)")
     #ls_csnrh7, = ax_csnrh2.plot(redshift_linespace, csnrh_kroupa, linestyle=':', color='red', label="SNRD (MD14 - Kroupa)")
-    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle='-', color='blue', label="MD14 - Chabrier")
+    ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle='-', color='blue', label=f"MD14 (kcc={kcc_chabrier:.3})")
     #ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier_sys, linestyle=':', color='black', label="MD14 - Chabrier System")
 
     # CSFRH plot
@@ -553,9 +568,9 @@ def cosmic_level(snaps):
     # lines
     #ls_csfrh1, = ax_csfrd.plot(redshift_linespace, md14_snrd_1000, linestyle='--', color='Green', label="TNG100 - Top 1000")
     ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_snrd_all, linestyle='--', color='lime', label="TNG100 - All")
-    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='-', color='teal', label="Madau & Dickinson 2014)")
+    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='-', color='teal', label="Madau & Dickinson 2014")
     #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14, linestyle='--', color='red', label="TNG100 - Kcc MD14)")
-    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier")
+    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label=f"TNG100 (kcc={kcc_chabrier:.3})")
     #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14_noscale, linestyle='--', color='red', label="TNG100 - Kcc MD14 no scale)")
     #ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier_noscale, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier no scale)")
 
@@ -587,8 +602,15 @@ fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm
 for sn_type in all_sn_types:
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
 
+    if sn_type in ["IIP", "II-Other"]:
+        kcc_type = 2
+    elif sn_type in ["Ib", "Ic"]:
+        kcc_type = 1
+    else:
+        kcc_type = None
+
     halo_level(snapshots)
-    snrd, snrd_alt = cosmic_level(snapshots)
+    snrd, snrd_alt = cosmic_level(snapshots, kcc_type)
 
     plot_names = ['1', '2', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
@@ -603,4 +625,4 @@ for sn_type in all_sn_types:
     plt_labels(fig_types2, ax_types2, 2)
 
 
-plt.show()
+#plt.show()

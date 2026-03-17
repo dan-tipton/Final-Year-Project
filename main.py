@@ -21,6 +21,9 @@ from Helpers.FormatHelper import SNeRatio, ImfAndSNe
 # initialise class instances
 myStarMass = StarMass(10000)
 normIMF = IMF(1)
+print('chabrier', normIMF.chabrier(1.1))
+print('salpeter', normIMF.salpeter(0.9))
+print('here', normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 myIMF = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 myStats = StatsHelper(10)
 myAnalysis = Analysis(8, 25, 80, 0.7)
@@ -57,7 +60,8 @@ massList = myStarMass.generateListSolarMasses()
 
 for idx, func in enumerate(functions):
     for mass in massList:
-        imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
+        #imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
+        imfDict[keys[idx]].append(func(mass))
 
 """
 # Old code for getting plot data 
@@ -127,6 +131,7 @@ for idx, imf in enumerate(functions):
     mtlDataframe[keys[idx]].append(ImfAndSNe(keys[idx], SNeRatio(zData, ratioData)))
 
 # generate plots of metallicity against supernova ratio
+"""
 for key, snDataset in mtlDataframe.items():
     for dataset in snDataset:
         # sort data by z so plot line connects correctly
@@ -144,6 +149,7 @@ for key, snDataset in mtlDataframe.items():
         plt.savefig(full_path)
         plt.close()  
     #plt.show()
+"""
 
 
 
@@ -182,6 +188,7 @@ plt.show()
 """
 
 # region Massive Stars
+"""
 df = pd.DataFrame(imfDict[keys[3]])
 df['mass'] = massList
 
@@ -219,7 +226,7 @@ for file_name in my_glob:
 
     # wont all regions have some massive stars ]
     # no different to what was done previously?????
-
+"""
 
 # region Plot
 for key, values in imfDict.items():
@@ -236,9 +243,10 @@ for key, values in imfDict.items():
 plt.xlabel("Log (Mass [M☉])")
 plt.ylabel("Log (ξ(m)Δm)")
 plt.title(f"Initial Mass Functions (IMF), normalised to {myStarMass.massRegion:.1e} solar masses")
+#plt.title(f"Initial Mass Functions (IMF)")
 plt.xscale('log')
 plt.yscale('log')
 plt.ylim(10**-2,10**9)
 plt.legend()
-#plt.show()
+plt.show()
 
