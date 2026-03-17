@@ -500,17 +500,14 @@ class BPASSAnalysis():
 
         all_results_df = pd.DataFrame(result_rows)
         all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Halo_ID', 'Halo_SFR', 'Halo_Volume', 'Number_of_Subhalos', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
-        #print(f"    Subhalo: {all_results_df['Halo_ID'].iloc[0]}, {i} pixels counted")
         
         # NEW: Supernova Rate = Number of supernova/time then divide by mass to get supernova/yr/solar mass
         # ccSNRate is actually the NUMBER of supernova not the rate so ccSNRate/
         pixel_snr = all_results_df["ccSNRate"] / (all_results_df["Age_Myr"] * 1e6)
         pixel_snr_solar = pixel_snr / all_results_df["Mass"]
-
-        # Calculate the box size properly (75000 ckpc/h)
-        #h = 0.6774
-        #box_size_length = 75000 * 1e-6 / (h * (1+all_results_df["Redshift"].iloc[0]))
-        #box_size = pow(box_size_length,3)
+        
+        # NEW: sum of the supernova rates in yr-1 
+        subhalo_snr_no_mass = pixel_snr.sum()
         
         # halo volume calculated in Gpc^3 from TNG gas data
         # all rows contain same value for the halo volume 
@@ -519,7 +516,7 @@ class BPASSAnalysis():
         # supernova rate density 
         # ccSNRate is a number not a rate 
         total_supernova_number = sum(all_results_df["ccSNRate"])
-        # sum the total snr per solar mass for the subhalo 
+        # sum the total snr per solar mass for the subhalo in yr-1 Mo-1
         subhalo_snr = sum(pixel_snr_solar)
         # calculate subhalo snr per halo volume 
         subhalo_snr_density = subhalo_snr / halo_volume
@@ -534,14 +531,13 @@ class BPASSAnalysis():
         z = all_results_df["Redshift"].iloc[0]
         subhalo_id = all_results_df['Halo_ID'].iloc[0]
 
-        #print(f"sfrd: {subhalo_sfr_density:2e} snrd: {subhalo_sfr_density:2e}")
-
         subhalo_dataframe = {
             'id': subhalo_id,
             'sfr': subhalo_sfr,
             'sfrd': subhalo_sfr_density,
             'sn': total_supernova_number,
             'snr': subhalo_snr,
+            'snr_no_mass': subhalo_snr_no_mass,
             'snrd': subhalo_snr_density,
             'mass':mass,
             'z': z, 
