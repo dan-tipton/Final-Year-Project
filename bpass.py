@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 4
+mode = 3
 
 # region Imports
 import pandas as pd
@@ -266,7 +266,7 @@ elif mode == 3:
     """
 
     dummyPath = "/Users/dan/Code/FYP/Data/TNG/Snapshot_Demo/DummyRun3.csv"
-    #dummyPath = "/Users/dan/Code/FYP/Data/TNG/Input/Subhalo41538_Redshift0.01.csv"
+    dummyPath = "/Users/dan/Code/FYP/Data/TNG/Snapshot_26/Subhalo0_Redshift2.896.csv"
     dumb_df = pd.read_csv(dummyPath)
 
     result_rows = []
@@ -276,22 +276,78 @@ elif mode == 3:
 
         #inputMtl = 0.02
         #inputAge = 7.4
-        sn_rate_data = bpassAnalysis.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 1)
+        sn_rate_data = bpassAnalysis.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 0)
         sn_rate_data['x'] = row['x']
         sn_rate_data['y'] = row['y']
         sn_rate_data['Redshift'] = row['redshift']
         sn_rate_data['Mass'] = row['mass_solar']
         sn_rate_data['Age_Myr'] = row['age_Myr']
         sn_rate_data['Halo_ID'] = row['halo_id']
+        sn_rate_data['Halo_SFR'] = row['halo_SFR']
+        sn_rate_data['Halo_Volume'] = row['halo_volume']
+        sn_rate_data['Number_of_Subhalos'] = row['number_of_subhalos']
 
         result_rows.append(dict(sn_rate_data.items()))
 
     all_results_df = pd.DataFrame(result_rows)
-    all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
+    #all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
+    all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Halo_ID', 'Halo_SFR', 'Halo_Volume', 'Number_of_Subhalos', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
     # remove any regions with Supernova Rate (ccSNRate) of zero
     all_results_df = all_results_df[all_results_df["ccSNRate"] != 0]
 
-    all_results_df.to_csv("/Users/dan/Code/FYP/Data/TNG/Output/out.csv")
+    all_results_df.to_csv("/Users/dan/Code/FYP/Data/TNG/dummy_out.csv")
+
+    # NEW: Supernova Rate = Number of supernova/time then divide by mass to get supernova/yr/solar mass
+    # ccSNRate is actually the NUMBER of supernova not the rate so ccSNRate/
+    pixel_snr = all_results_df["ccSNRate"] / (all_results_df["Age_Myr"] * 1e6)
+    pixel_snr_solar = pixel_snr / all_results_df["Mass"]
+    
+    # NEW: sum of the supernova rates in yr-1 
+    subhalo_snr_no_mass = pixel_snr.sum()
+
+    print('TOTAL MASS', sum(all_results_df["Mass"]))
+    
+    # halo volume calculated in Gpc^3 from TNG gas data
+    # all rows contain same value for the halo volume 
+    halo_volume = all_results_df["Halo_Volume"].iloc[0]
+
+    # supernova rate density 
+    # ccSNRate is a number not a rate 
+    total_supernova_number = sum(all_results_df["ccSNRate"])
+    # sum the total snr per solar mass for the subhalo in yr-1 Mo-1
+    subhalo_snr = sum(pixel_snr_solar)
+    # calculate subhalo snr per halo volume 
+    subhalo_snr_density = subhalo_snr / halo_volume
+
+    # similar method for sfrd 
+    # sfr is constant across all rows of data
+    subhalo_sfr = all_results_df['Halo_SFR'].iloc[0]
+    subhalo_sfr_density = subhalo_sfr / halo_volume
+
+    # other details 
+    mass = sum(all_results_df["Mass"])
+    z = all_results_df["Redshift"].iloc[0]
+    subhalo_id = all_results_df['Halo_ID'].iloc[0]
+
+    subhalo_dataframe = {
+        'id': subhalo_id,
+        'sfr': subhalo_sfr,
+        'sfrd': subhalo_sfr_density,
+        'sn': total_supernova_number,
+        'snr': subhalo_snr,
+        'snr_no_mass': subhalo_snr_no_mass,
+        'snrd': subhalo_snr_density,
+        'mass':mass,
+        'z': z, 
+        'halo_volume': halo_volume,
+    }
+
+    #pd.DataFrame(subhalo_dataframe).to_csv("/Users/dan/Code/FYP/Data/TNG/subhalo_dummy.csv")
+
+    # Print all key-value pairs
+    for name, value in subhalo_dataframe.items():
+        print(f"{name}: {value}")
+
     
     total_supernova_rate = sum(all_results_df["ccSNRate"])
     print(f'total supernova rate for subhalo: {total_supernova_rate}')

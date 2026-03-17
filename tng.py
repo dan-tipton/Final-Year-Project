@@ -65,7 +65,7 @@ def count_lines_fast(path):
 
 # region Build
 def build_rates(snap):
-    build_type = "Ic"
+    build_type = "IIP"
     position = snapshots.index(snap) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
@@ -166,12 +166,12 @@ def calculate_densities(snaps):
         # NEW SNRD Calculation (different units)
         # removes the mass dependance by multipying by the halo mass first 
         total_snr_times_mass = sum(subhalo_df["snr"] * subhalo_df["mass"])
-        total_snrd_no_mass = total_snr_times_mass / total_snr_new
+        total_snrd_no_mass = total_snr_times_mass / box_size
         snrd_no_mass_box.append(total_snrd_no_mass)
 
         # NEW SNRD Calculations (without multiplying by mass)
         total_snr_new = sum(subhalo_df["snr_no_mass"])
-        total_snrd_new = total_snr_new / total_snr_new
+        total_snrd_new = total_snr_new / box_size
         snrd_no_mass_new.append(total_snrd_new)
 
         # total star formation in the box 
@@ -499,6 +499,8 @@ def cosmic_level(snaps, kcc_type):
     # SFRD values are compared between the two data sets 
     # this can be applied to the SNRD to get SNRD estimates for the whole box 
     sfrd_scaling = rev_sfrd_all/rev_sfrd_1000
+
+    print("scaling from top 1000 to all subhalos for sfr", sfrd_scaling)
     rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
     rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
     rev_snrd_alt_scaled_new = rev_snrd_alt_new * sfrd_scaling
@@ -515,6 +517,7 @@ def cosmic_level(snaps, kcc_type):
     md14_snrd_scaled = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
     md14_snrd_alt_scaled = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
     md14_snrd_alt_scaled_new = curve_md14(rev_redshifts, rev_snrd_alt_scaled_new)
+
 
     # sfrd 
     md14_sfrd_1000 = curve_md14(rev_redshifts, rev_sfrd_1000)
@@ -551,6 +554,25 @@ def cosmic_level(snaps, kcc_type):
 
     #csfrh_kcc_md14_noscale = md14_snrd_alt / 0.0068
     #csfrh_kcc_chabrier_noscale  = md14_snrd_alt / kcc_chabrier
+
+
+    dave_md14 = 0.015 * pow((1 + rev_redshifts), 2.7)/(1 + pow((1 + rev_redshifts)/2.9, 5.6)) 
+    dave_sfr = rev_snrd_alt_scaled / kcc_chabrier
+    dave_ratio = dave_sfr / dave_md14
+
+    print('For Dave: sfr/md14')
+    for idx, r in enumerate(dave_ratio):
+        print(f"redshift {rev_redshifts[idx]}, ratio: {dave_ratio[idx]}")
+
+    print('red to green')
+    red_to_green = rev_snrd_1000_scaled / rev_sfrd_all
+    for idx, r in enumerate(dave_ratio):
+        print(f"redshift {rev_redshifts[idx]}, ratio: {red_to_green[idx]}")
+
+    print('cyan to green')
+    cyan_to_green = rev_snrd_alt_scaled / rev_sfrd_all
+    for idx, r in enumerate(dave_ratio):
+        print(f"redshift {rev_redshifts[idx]}, ratio: {cyan_to_green[idx]}")
     
     # CSNRH plot
     fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
@@ -564,7 +586,7 @@ def cosmic_level(snaps, kcc_type):
     ls_csnrh2, = ax_csnrh1.plot(redshift_linespace, md14_snrd_scaled, linestyle='--', color='firebrick', label="TNG100")
     #ls_csnrh3, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt, linestyle='--', color='Blue', label="SNRD (TNG100 - no mass)")
     ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="TNG100")
-    ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled_new, linestyle='--', color='Aqua', label="TNG100 - New")
+    ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled_new, linestyle='--', color='navy', label="TNG100 - New")
     #ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle=':', color='Navy', label="MD14 - Salpeter")
     #ls_csnrh6, = ax_csnrh2.plot(redshift_linespace, csnrh_salpeter, linestyle=':', color='lime', label="SNRD (MD14 - Salpeter)")
     #ls_csnrh7, = ax_csnrh2.plot(redshift_linespace, csnrh_kroupa, linestyle=':', color='red', label="SNRD (MD14 - Kroupa)")
@@ -593,7 +615,7 @@ def cosmic_level(snaps, kcc_type):
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
-build = True
+build = False
 
 if build == True:
     results = []
@@ -613,7 +635,7 @@ fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm
 
 for sn_type in all_sn_types:
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
-
+    print(sn_type)
     if sn_type in ["IIP", "II-Other"]:
         kcc_type = 2
     elif sn_type in ["Ib", "Ic"]:
