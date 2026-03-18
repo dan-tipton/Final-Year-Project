@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 3
+mode = 2.5
 
 # region Imports
 import pandas as pd
@@ -248,7 +248,7 @@ elif mode == 2:
     #myDataExtractor.plotAllPolynomials('_chab100', 'bin')
 
 elif mode == 2.5:
-    bpassAnalysis.generateCoeffs('_chab100', 'bin', 7.8, True)
+    bpassAnalysis.generateCoeffs('_chab100', 'bin', 7.4, True)
     #bpassAnalysis.generateCoeffs('170_100', 'bin', 7.4, True)
 
 #region SN Rate selection 

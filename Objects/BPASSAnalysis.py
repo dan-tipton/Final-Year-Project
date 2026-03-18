@@ -82,6 +82,8 @@ class BPASSAnalysis():
 
                         for _, row in df.iterrows():
                             age = row['Log(age/yrs)']
+                            bin_width = row['Length']
+                            print('bin width', bin_width)
                             if age not in ageDataframes:
                                 ageDataframes[age] = []
 
