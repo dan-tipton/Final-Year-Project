@@ -400,6 +400,7 @@ class BPASSAnalysis():
         if snRate < 0: 
             #invalid SN rate - normally due to polynomial dropping off at the selected metallicity 
             err = 1
+            normal = None
             #print(f'FAILED: Negative SN rate - INPUTS( Z: {z}, Age: {age}, Type: {sn_df.iloc[0]})')
         else:
             # generate normal dist and randomly select a rate
@@ -417,7 +418,7 @@ class BPASSAnalysis():
                     randomRate = random.choice(normal)
 
         # Generate a theoretical plot for visulisation
-        if plot == 1:
+        if plot == 1 and normal != None:
             theoretical_x = np.linspace(min(normal), max(normal), 1000)
             theoretical_y = norm.pdf(theoretical_x, loc=snRate, scale=std)
             yMax = max(theoretical_y)
@@ -426,32 +427,30 @@ class BPASSAnalysis():
             # histogram plots real random data
             plt.hist(normal, bins=40, density=True, alpha=0.5, color='firebrick')
             plt.plot(theoretical_x, theoretical_y, color='red', linewidth=2)
-            plt.axvline(randomRate, color='red', linestyle='dashed', linewidth=2, label=f'Random value: {randomRate:.2f}')
+            plt.axvline(randomRate, color='red', linestyle='dashed', linewidth=2, label=f'Random value: {randomRate:.2}')
 
             # mean line
-            plt.arrow(snRate, 0, 0, yMax, color='black', 
-                    head_width=10, head_length=0.00012, length_includes_head=True, shape='full')
-            plt.arrow(snRate, yMax, 0, -yMax, color='black', 
-                    head_width=10, head_length=0.00012, length_includes_head=True, shape='full')
-            plt.text(snRate, yMax + 0.0001, f'μ: {snRate:.2f}', ha='center')
-            
+            plt.annotate('',xy=(snRate, yMax),xytext=(snRate, 0),arrowprops=dict(arrowstyle='<->', color='black'))
+            plt.text(snRate, yMax + 0.0001, f'μ: {snRate:.2}', ha='center')
+
             # sigma line
-            plt.arrow(snRate, sigmaHeight, std, 0, color='black', shape='full', 
-                    head_width=0.00005, head_length=15, length_includes_head=True, width = 0.00001)
-            plt.arrow(snRate + std,  sigmaHeight, -std, 0, color='black', shape='full', 
-                    head_width=0.00005, head_length=15, length_includes_head=True, width = 0.00001)
-            plt.text(snRate + std / 2,  sigmaHeight + 0.0001, f'σ: {std:.2f}', ha='center')
+            plt.annotate('',xy=(snRate, sigmaHeight),xytext=(snRate + std, sigmaHeight),arrowprops=dict(arrowstyle='<->', color='black'))
+            plt.text(snRate + std / 2,  sigmaHeight + (sigmaHeight*0.05), f'σ: {std:.2}', ha='center')
 
             # FWHM line
+            print(fwhm)
+            plt.annotate('',xy=(snRate - fwhm/2, yMax/2),xytext=(snRate + fwhm/2, yMax/2),arrowprops=dict(arrowstyle='<->', color='black'))
             plt.axvline(snRate - fwhm/2, color='black', linestyle='dashed', linewidth=1, alpha=0.5)
             plt.axvline(snRate + fwhm/2, color='black', linestyle='dashed', linewidth=1, alpha=0.5)
+            plt.text(snRate * 0.99, yMax/2 + ((yMax/2)*0.05), f'FWHM: {fwhm:.2}', ha='center')
+            """
             plt.arrow(snRate - fwhm/2, 0.0041, fwhm, 0, color='black', shape='full', 
                     head_width=0.00005, head_length=15, length_includes_head=True, width = 0.00001)
             plt.arrow(snRate + fwhm/2, 0.0041, -fwhm, 0, color='black', shape='full', 
                     head_width=0.00005, head_length=15, length_includes_head=True, width = 0.00001)
-            plt.text(snRate - 30, 0.0041 + 0.0001, f'FWHM: {fwhm:.2f}', ha='center')
+            """
         
-            plt.title(f"Normally Distributed Supernova Rates:\n{str(sn_df.iloc[0])} imf{imf} {'binary' if str(sinbin) == 'bin' else 'single'} z:{str(z)} Age:{str(age)}yrs")
+            plt.title(f"Normally Distributed Supernova Rates:\n{str(sn_df.iloc[0])} imf{imf} {'binary' if str(sinbin) == 'bin' else 'single'} z:{str(z):.5} Age:{str(age):.3}yrs")
             
             plt.xlabel("Supernova Rate")
             plt.ylabel("Density")

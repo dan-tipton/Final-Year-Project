@@ -65,13 +65,14 @@ def count_lines_fast(path):
 
 # region Build
 def build_rates(snap):
-    build_type = "II-Other"
+    build_type = "IIP"
     position = snapshots.index(snap) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
 
     subhalo_rows = []
-    for file_name in my_glob:
+    for file_name in tqdm(my_glob, desc=f"Snapshot {snap}", position=position, leave=False):
+    #for file_name in my_glob:
         try:
             total_lines = count_lines_fast(file_name)
             # CSV has a single header row:
@@ -79,24 +80,26 @@ def build_rates(snap):
         except Exception:
             total_rows = None
 
+        """
         # create a tqdm for the CSV inner loop
         if total_rows:
             pbar = tqdm(total=total_rows,
-                        desc=f"Snap {snap} - {file_name.split('/')[-1]}",
-                        position=position,
+                        desc=f" Snap {snap} - {file_name.split('/')[-1]}",
+                        position=position + 1,
                         leave=False)
         else:
-            pbar = tqdm(desc=f"Snap {snap} - {file_name.split('/')[-1]}",
-                        position=position,
+            pbar = tqdm(desc=f" Snap {snap} - {file_name.split('/')[-1]}",
+                        position=position + 1,
                         leave=False)
+        """
 
         # call subhaloData and pass the pbar so inner loop can update it
-        subhalo_data = bpassAnalysis.subhaloData(file_name, pbar=pbar)
-        pbar.close()
+        subhalo_data = bpassAnalysis.subhaloData(file_name)#, pbar=pbar)
+        #pbar.close()
 
         subhalo_rows.append(dict(subhalo_data.items()))
 
-    print(f"    {len(subhalo_rows)} subhalos with postive rates")
+    #print(f"    {len(subhalo_rows)} subhalos with postive rates")
     subhalo_df = pd.DataFrame(subhalo_rows)
     subhalo_df.to_csv(f"/Users/dan/Code/FYP/Data/TNG/Rates/{build_type}/snapshot{snap}_rates.csv")
 
@@ -586,7 +589,7 @@ def cosmic_level(snaps, kcc_type):
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
-build = False
+build = True
 
 if build == True:
     results = []
@@ -597,6 +600,7 @@ if build == True:
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 #sn_type = "Ic"
+all_sn_types = ["II-Other"]
 
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]

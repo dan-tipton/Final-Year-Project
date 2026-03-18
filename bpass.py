@@ -282,7 +282,7 @@ elif mode == 3:
 
         #inputMtl = 0.02
         #inputAge = 7.4
-        sn_rate_data = bpassAnalysis.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 0)
+        sn_rate_data = bpassAnalysis.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 1)
         sn_rate_data['x'] = row['x']
         sn_rate_data['y'] = row['y']
         sn_rate_data['Redshift'] = row['redshift']
