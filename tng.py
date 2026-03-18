@@ -65,38 +65,14 @@ def count_lines_fast(path):
 
 # region Build
 def build_rates(snap):
-    build_type = "IIP"
+    build_type = "Ic"
     position = snapshots.index(snap) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
 
     subhalo_rows = []
     for file_name in tqdm(my_glob, desc=f"Snapshot {snap}", position=position, leave=False):
-    #for file_name in my_glob:
-        try:
-            total_lines = count_lines_fast(file_name)
-            # CSV has a single header row:
-            total_rows = max(0, total_lines - 1)
-        except Exception:
-            total_rows = None
-
-        """
-        # create a tqdm for the CSV inner loop
-        if total_rows:
-            pbar = tqdm(total=total_rows,
-                        desc=f" Snap {snap} - {file_name.split('/')[-1]}",
-                        position=position + 1,
-                        leave=False)
-        else:
-            pbar = tqdm(desc=f" Snap {snap} - {file_name.split('/')[-1]}",
-                        position=position + 1,
-                        leave=False)
-        """
-
-        # call subhaloData and pass the pbar so inner loop can update it
         subhalo_data = bpassAnalysis.subhaloData(file_name)#, pbar=pbar)
-        #pbar.close()
-
         subhalo_rows.append(dict(subhalo_data.items()))
 
     #print(f"    {len(subhalo_rows)} subhalos with postive rates")
@@ -112,8 +88,8 @@ def calculate_densities(snaps):
     redshifts = []
     snrd_box = []
     sfrd_box = []
-    snrd_no_mass_box = []
-    snrd_no_mass_new = []
+    snrd_mass = []
+    snrd_no_mass = []
     
     for idx, snap in enumerate(snaps):
         # read rate files
@@ -130,23 +106,24 @@ def calculate_densities(snaps):
         # Calculate the box size properly (75000 ckpc/h)
         # gives in comving currenly
         h = 0.6774
-        #box_size_length = 75000 * 1e-6 / (h * (1+redshift))
         box_size_length = 75 / h
         box_size = pow(box_size_length,3)
-
-        #box_size_phys = box_size / (1 + redshift)**3  # Mpc^3 physical WRONG
 
         # total snrd in the box 
         # found by summing all the snr (each subhalo yr-1 Mpc-3)
         total_snr = sum(subhalo_df["snr"])
-        # divide by the total box volume 
         total_snrd = total_snr / box_size
         snrd_box.append(total_snrd)
 
-        # total SNRD Calculations (different units yr-1 Mo-1 Mpc-3)
-        total_snr_new = sum(subhalo_df["snr_solar"])
+        # total SNRD Calculations ( units yr-1 Mpc-3)
+        total_snr_new = sum(subhalo_df["snr_solar"] * subhalo_df["mass"])
         total_snrd_new = total_snr_new / box_size
-        snrd_no_mass_new.append(total_snrd_new)
+        snrd_no_mass.append(total_snrd_new)
+
+        # total SNRD Calculations (different units yr-1 Mo-1 Mpc-3)
+        total_snr_mass = sum(subhalo_df["snr_solar"])
+        total_snrd_mass = total_snr_mass / box_size
+        snrd_mass.append(total_snrd_mass)
 
         # total star formation in the box 
         # note this only takes into account the top 1000 chosen
@@ -154,7 +131,7 @@ def calculate_densities(snaps):
         total_sfrd = total_sfr / box_size
         sfrd_box.append(total_sfrd)
 
-    return redshifts, snrd_box, sfrd_box, snrd_no_mass_box, snrd_no_mass_new
+    return redshifts, snrd_box, sfrd_box, snrd_no_mass, snrd_mass
 
 #region sfrd (all subhalos)
 def calculated_sfrd():
@@ -206,22 +183,9 @@ def average_rates(snaps):
         av_sfrd.append(sum(sfrd_group)/len(sfrd_group))
 
     fig3, ax6 = plt.subplots()
-    #ax6.scatter(avg_sfrd_density, avg_snrd_density, marker='x', color='red')
     ax6.set_title('Averaged SFRD vs SNRD')
     ax6.set_xlabel(r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Gpc^{-3}}$]')
     ax6.set_ylabel(r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Gpc^{-3}}$]')
-    #ax5.set_yscale('log')
-    #ax5.set_xscale('log')
-
-    """
-    # using weighted averages
-    sfrd_linespace = np.linspace(np.array(avg_sfrd_density).min(), np.array(avg_sfrd_density).max(), 200)
-    coeffs = np.polyfit(avg_sfrd_density, avg_snrd_density, 1) 
-    m, c = coeffs
-    snrd_line = m*sfrd_linespace + c
-    ax6.plot(sfrd_linespace, snrd_line, linestyle='--', color='red')
-    print(f"Gradient: {m},Intercept: {c}")
-    """
 
     # standard deviation (sample std, N-1)
     std_dev = np.std(av_snrd, ddof=1)  # ddof=1 gives sample std
@@ -237,7 +201,6 @@ def average_rates(snaps):
     print(f"Gradient: {m},Intercept: {c}")
     ax6.legend()
 
-    #plt.show()
     return fig3
 
 # region MD2014 Formula
@@ -455,7 +418,7 @@ def supernova_efficiency(_imf, sn_type=2):
 
 # region Plot Cosmic Level
 def cosmic_level(snaps, kcc_type):
-    redshifts, snrd, sfrd_1000, snrd_alt, snrd_alt_new = calculate_densities(snaps)
+    redshifts, snrd, sfrd_1000, snrd_alt, snrd_mass = calculate_densities(snaps)
     sfrd_all, _ = calculated_sfrd()
 
     # order arrays to be ascedning 
@@ -466,7 +429,7 @@ def cosmic_level(snaps, kcc_type):
     # snrd
     rev_snrd = np.array(snrd)[::-1]
     rev_snrd_alt = np.array(snrd_alt)[::-1]
-    rev_snrd_alt_new = np.array(snrd_alt_new)[::-1]
+    rev_snrd_mass = np.array(snrd_mass)[::-1]
 
     # scaling
     # calculate a scale factor for each redshift value to convert from top 1000 halos to all halos
@@ -477,7 +440,7 @@ def cosmic_level(snaps, kcc_type):
     print("scaling from top 1000 to all subhalos for sfr", sfrd_scaling)
     rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
     rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
-    rev_snrd_alt_scaled_new = rev_snrd_alt_new * sfrd_scaling
+    rev_snrd_mass_scaled = rev_snrd_mass * sfrd_scaling
 
     # madau and dickinson 2014
     # their fomrula ius given in Mpc3 we have Gpc3
@@ -486,100 +449,57 @@ def cosmic_level(snaps, kcc_type):
     csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
 
     # snrd curve fits
-    md14_snrd = curve_md14(rev_redshifts, rev_snrd)
-    md14_snrd_alt = curve_md14(rev_redshifts, rev_snrd_alt)
     md14_snrd_scaled = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
     md14_snrd_alt_scaled = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
-    md14_snrd_alt_scaled_new = curve_md14(rev_redshifts, rev_snrd_alt_scaled_new)
-
+    md14_snrd_mass_scaled = curve_md14(rev_redshifts, rev_snrd_mass_scaled)
 
     # sfrd 
-    md14_sfrd_1000 = curve_md14(rev_redshifts, rev_sfrd_1000)
     md14_sfrd_all = curve_md14(rev_redshifts, rev_sfrd_all)
-
-    print(md14_sfrd_all[:5])  # first few values
 
     # quoted core collapse efficiency scaling for salpeter
     # we will want a chabrier (need to caluclate it)
     # use IMFs defined previously 
     # formula is integral imf / integral mass * imf 
     # kcc given in Mo-1 
-    csnrh = csfrh * 0.0068
 
     kcc_salpeter = supernova_efficiency(imf.salpeter, kcc_type)
-    kcc_kroupa = supernova_efficiency(imf.kroupa, kcc_type)
     kcc_chabrier = supernova_efficiency(imf.chabrier, kcc_type)
     kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
 
-    #print("kcc: ", kcc_type)
-    #print("  salpeter: ", kcc_salpeter)
-    #print("  chabrier: ", kcc_chabrier)
-
     csnrh_salpeter = csfrh * kcc_salpeter
-    csnrh_kroupa = csfrh * kcc_kroupa
     csnrh_chabrier = csfrh * kcc_chabrier
     csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
 
     # trace sfrd using snrd 
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
-    csfrh_kcc_md14 = md14_snrd_alt_scaled / 0.0068
-    csfrh_kcc_chabrier = md14_snrd_alt_scaled / kcc_chabrier
-    csfrh_kcc_chabrier_raw = rev_snrd_alt_scaled / kcc_chabrier
+    csfrh_kcc_chabrier = md14_snrd_scaled / kcc_chabrier
+    csfrh_kcc_chabrier_raw = rev_snrd_1000_scaled / kcc_chabrier
 
-    #csfrh_kcc_md14_noscale = md14_snrd_alt / 0.0068
-    #csfrh_kcc_chabrier_noscale  = md14_snrd_alt / kcc_chabrier
-
-
-    dave_md14 = 0.015 * pow((1 + rev_redshifts), 2.7)/(1 + pow((1 + rev_redshifts)/2.9, 5.6)) 
-    dave_sfr = rev_snrd_alt_scaled / kcc_chabrier
-    dave_ratio = dave_sfr / dave_md14
-
-    print('For Dave: sfr/md14')
-    for idx, r in enumerate(dave_ratio):
-        print(f"redshift {rev_redshifts[idx]}, ratio: {dave_ratio[idx]}")
-
-    print('red to green')
-    red_to_green = rev_snrd_1000_scaled / rev_sfrd_all
-    for idx, r in enumerate(dave_ratio):
-        print(f"redshift {rev_redshifts[idx]}, ratio: {red_to_green[idx]}")
-
-    print('cyan to green')
-    cyan_to_green = rev_snrd_alt_scaled / rev_sfrd_all
-    for idx, r in enumerate(dave_ratio):
-        print(f"redshift {rev_redshifts[idx]}, ratio: {cyan_to_green[idx]}")
+    artificial = 4 * md14_snrd_scaled / kcc_chabrier
     
     # CSNRH plot
     fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
     # scatters
-    #sc_csnrh1 = ax_csnrh1.scatter(rev_redshifts, rev_snrd, color='Red', label='SNRD (TNG100)', marker='.')
-    sc_csnrh2 = ax_csnrh1.scatter(rev_redshifts, rev_snrd_1000_scaled, color='firebrick', label="TNG100", marker='.')
-    #sc_csnrh3 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_alt, color='Blue', label='SNRD (TNG100 - no mass)', marker='.')
-    sc_csnrh4 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_alt_scaled, color='Aqua', label='TNG100 - Alternate', marker='.')
+    sc_csnrh2 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_1000_scaled, color='navy', label="TNG100", marker='.')
+    #sc_csnrh4 = ax_csnrh2.scatter(rev_redshifts, rev_snrd_alt_scaled, color='Aqua', label='TNG100 - Alternate', marker='.')
+    sc_csnrh4 = ax_csnrh1.scatter(rev_redshifts, rev_snrd_mass_scaled, color='firebrick', label='TNG100 - Mass Units', marker='.')
     # lines
-    #ls_csnrh1, = ax_csnrh1.plot(redshift_linespace, md14_snrd, linestyle='--', color='Red', label="SNRD (TNG100)")
-    ls_csnrh2, = ax_csnrh1.plot(redshift_linespace, md14_snrd_scaled, linestyle='--', color='firebrick', label="TNG100")
-    #ls_csnrh3, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt, linestyle='--', color='Blue', label="SNRD (TNG100 - no mass)")
-    ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="TNG100")
-    ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled_new, linestyle='--', color='navy', label="TNG100 - New")
-    #ls_csnrh5, = ax_csnrh2.plot(redshift_linespace, csnrh, linestyle=':', color='Navy', label="MD14 - Salpeter")
-    #ls_csnrh6, = ax_csnrh2.plot(redshift_linespace, csnrh_salpeter, linestyle=':', color='lime', label="SNRD (MD14 - Salpeter)")
-    #ls_csnrh7, = ax_csnrh2.plot(redshift_linespace, csnrh_kroupa, linestyle=':', color='red', label="SNRD (MD14 - Kroupa)")
+    ls_csnrh2, = ax_csnrh2.plot(redshift_linespace, md14_snrd_scaled, linestyle='--', color='navy', label="TNG100")
+    #ls_csnrh4, = ax_csnrh2.plot(redshift_linespace, md14_snrd_alt_scaled, linestyle='--', color='Aqua', label="TNG100 - Alternate")
+    ls_csnrh4, = ax_csnrh1.plot(redshift_linespace, md14_snrd_mass_scaled, linestyle='--', color='firebrick', label="TNG100 - Mass units")
     ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier, linestyle='-', color='blue', label=f"MD14 (kcc={kcc_chabrier:.3})")
     #ls_csnrh9, = ax_csnrh2.plot(redshift_linespace, csnrh_chabrier_sys, linestyle=':', color='black', label="MD14 - Chabrier System")
 
     # CSFRH plot
     fig_csfrh, ax_csfrd, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.20)
     # scatters
-    #sc1 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_1000, color='Green', label='SFRD (TNG100 - Top 1000)', marker='.')
     sc2 = ax_csfrd.scatter(rev_redshifts, rev_sfrd_all, color='lime', label='TNG100 - All', marker='.')
     sc3 = ax_csfrd.scatter(rev_redshifts, csfrh_kcc_chabrier_raw, color='gold', label="TNG100 - Kcc Chabrier", marker='.')
     # lines
-    #ls_csfrh1, = ax_csfrd.plot(redshift_linespace, md14_sfrd_1000, linestyle='--', color='Green', label="TNG100 - Top 1000")
     ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_sfrd_all, linestyle='--', color='lime', label="TNG100 - All")
     ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='-', color='teal', label="Madau & Dickinson 2014")
-    #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14, linestyle='--', color='red', label="TNG100 - Kcc MD14)")
-    ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label=f"TNG100 (kcc={kcc_chabrier:.3})")
-    #ls_csfrh2, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_md14_noscale, linestyle='--', color='red', label="TNG100 - Kcc MD14 no scale)")
+    ls_csfrh4, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label=f"TNG100 (II-Other) (kcc={kcc_chabrier:.3})")
+    ls_csfrh5, = ax_csfrd.plot(redshift_linespace, artificial, linestyle='--', color='orange', label=f"Artifical (Gold * 4) (kcc={kcc_chabrier:.3})")
     #ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier_noscale, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier no scale)")
 
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
