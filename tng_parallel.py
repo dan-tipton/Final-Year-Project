@@ -13,7 +13,7 @@ import astropy.units as u
 from Objects.BPASSAnalysis import BPASSAnalysis
 from Objects.BPASSDataFormatter import BPASSDataFormatter
 from Objects.IMF import IMF
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
 from scipy import integrate
@@ -39,29 +39,26 @@ warnings.filterwarnings("ignore", message=".*non-positive xlim.*")
 #region setup
 tqdm.set_lock(RLock())
 
-MAX_WORKERS = 4
-colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'limegreen', 'purple', 'pink', 'grey', 'black']
-colours = ['#800080',"#1a1a1a", "#3714ff", '#c0c0c0', "#1fb81f", '#40e0d0','#ffd700','#ffa500','#ff7f50',"#f53eff","#ff0000", '#87ceeb']
-
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
 bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
+MAX_THREADS_PER_SNAPSHOT = min(32, os.cpu_count() * 2)
+MAX_SNAPSHOT_THREADS = 10  # run up to 4 snapshots in parallel
+
 rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 
+build_type = "II-Other"
+sn_type = 1
 
-import glob
-import pandas as pd
-from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import os
+print(build_type)
 
 def build_rates(snap):
     """
     Build rates for a single snapshot folder.
-    bpass_obj: instance of bpassAnalysis class
+    snType: 0: IIP, 1: II-Other, 2: Ib, 3: Ic, 4: Long-GRB, 5: Pair-Instab, 6: Low-mass
     """
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
@@ -81,7 +78,16 @@ def build_rates(snap):
             inputAge = row['age_bin']
 
             # Call generateSupernovaRate (reads coefficient CSV internally)
-            sn_rate_data = bpassAnalysis.generateSupernovaRate(0, "_chab100", "bin", inputMtl, inputAge, 0)
+            sn_rate_data = bpassAnalysis.generateSupernovaRate(sn_type, "_chab100", "bin", inputMtl, inputAge, 0)
+            sn_rate_data['x'] = row['x']
+            sn_rate_data['y'] = row['y']
+            sn_rate_data['Redshift'] = row['redshift']
+            sn_rate_data['Mass'] = row['mass_solar']
+            sn_rate_data['Age_Myr'] = row['age_Myr']
+            sn_rate_data['Halo_ID'] = row['halo_id']
+            sn_rate_data['Halo_SFR'] = row['halo_SFR']
+            sn_rate_data['Halo_Volume'] = row['halo_volume']
+            sn_rate_data['Number_of_Subhalos'] = row['number_of_subhalos']
             result_rows.append(dict(sn_rate_data.items()))
         
         all_results_df = pd.DataFrame(result_rows)
@@ -120,28 +126,29 @@ def build_rates(snap):
         }
         return subhalo_dataframe
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with ThreadPoolExecutor(max_workers=MAX_THREADS_PER_SNAPSHOT) as executor:
         futures = {executor.submit(process_file, f): f for f in my_glob}
-
-        for f in tqdm(as_completed(futures),
-                      total=len(futures),
-                      desc=f"Snapshot {snap}",
-                      leave=False):
-            df_file = f.result()              # already processed with extra pandas logic
-            all_rows.extend(df_file.to_dict('records'))
+        for f in tqdm(as_completed(futures), total=len(futures), desc=f"Snapshot {snap}", leave=False):
+            df_file = f.result()
+            all_rows.append(df_file)
 
     # Convert to DataFrame and save
     df_snapshot = pd.DataFrame.from_records(all_rows)
-    df_snapshot.to_csv(f"snapshot{snap}_rates.csv", index=False)
+    df_snapshot.to_csv(f"/Users/dan/Code/FYP/Data/TNG/Rates/{build_type}/snapshot{snap}_rates.csv", index=False)
     return df_snapshot
 
 def main():
-    snapshots = snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]  # replace with your actual snapshot list
+    snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
     results = []
 
-    for snap in snapshots:
-        df = build_rates(snap)
-        results.append(df)
+    # Use processes instead of threads for CPU-bound work
+    max_workers = min(len(snapshots), os.cpu_count())
+    
+    with ThreadPoolExecutor(max_workers=MAX_SNAPSHOT_THREADS) as executor:
+        futures = {executor.submit(build_rates, snap): snap for snap in snapshots}
+        for f in tqdm(as_completed(futures), total=len(futures), desc="All Snapshots"):
+            df_snapshot = f.result()
+            results.append(df_snapshot)
 
     return results
 

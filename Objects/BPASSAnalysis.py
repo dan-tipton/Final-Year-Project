@@ -475,7 +475,7 @@ class BPASSAnalysis():
             #print(f'SUCCESS: INPUTS( Z: {z}, Age: {age}, Type: {sn_df.iloc[0]})')
         return normDataframe
     
-    def subhaloData(self, path, pbar=None):
+    def subhaloData(self, path, sn_type, pbar=None):
         df = pd.read_csv(path)
         result_rows = []
         i = 0
@@ -485,7 +485,7 @@ class BPASSAnalysis():
 
             # slowing down code for no reason by reassigning or is it minimal?
             # snType: 0: IIP, 1: II-Other, 2: Ib, 3: Ic, 4: Long-GRB, 5: Pair-Instab, 6: Low-mass
-            sn_rate_data = self.generateSupernovaRate(0, "_chab100", "bin", inputMtl, inputAge, 0)
+            sn_rate_data = self.generateSupernovaRate(sn_type, "_chab100", "bin", inputMtl, inputAge, 0)
             sn_rate_data['x'] = row['x']
             sn_rate_data['y'] = row['y']
             sn_rate_data['Redshift'] = row['redshift']

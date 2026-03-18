@@ -65,14 +65,16 @@ def count_lines_fast(path):
 
 # region Build
 def build_rates(snap):
-    build_type = "Ic"
+    # snType: 0: IIP, 1: II-Other, 2: Ib, 3: Ic, 4: Long-GRB, 5: Pair-Instab, 6: Low-mass
+    build_type = "IIP"
+    sn_type = 3
     position = snapshots.index(snap) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
 
     subhalo_rows = []
     for file_name in tqdm(my_glob, desc=f"Snapshot {snap}", position=position, leave=False):
-        subhalo_data = bpassAnalysis.subhaloData(file_name)#, pbar=pbar)
+        subhalo_data = bpassAnalysis.subhaloData(file_name, sn_type)#, pbar=pbar)
         subhalo_rows.append(dict(subhalo_data.items()))
 
     #print(f"    {len(subhalo_rows)} subhalos with postive rates")
@@ -505,11 +507,11 @@ def cosmic_level(snaps, kcc_type):
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
-    return md14_snrd_scaled, md14_snrd_alt_scaled
+    return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
-build = True
+build = False
 
 if build == True:
     results = []
@@ -520,13 +522,16 @@ if build == True:
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 #sn_type = "Ic"
-all_sn_types = ["II-Other"]
+all_sn_types = ["IIP"]
 
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
-fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', space=0.2)
-fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+
+fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types1, ax_total, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+
 
 for sn_type in all_sn_types:
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
@@ -539,7 +544,7 @@ for sn_type in all_sn_types:
         kcc_type = None
 
     halo_level(snapshots)
-    snrd, snrd_alt = cosmic_level(snapshots, kcc_type)
+    snrd, sfrh, snrd_md14, sfrh_md14 = cosmic_level(snapshots, kcc_type)
 
     plot_names = ['1', '2', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
@@ -549,9 +554,7 @@ for sn_type in all_sn_types:
             plt.close(curr_fig)
 
     ax_types1.plot(redshift_linespace, snrd, label=f'{sn_type}')
-    ax_types2.plot(redshift_linespace, snrd_alt, label=f'{sn_type}')
     plt_labels(fig_types1, ax_types1, 2)
-    plt_labels(fig_types2, ax_types2, 2)
 
 
 #plt.show()
