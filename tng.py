@@ -403,20 +403,44 @@ def halo_level(snaps):
 
     return True
 
-def supernova_efficiency(_imf, sn_type=2):
+"""
+def supernova_efficiency(_imf, sn_type=20):
     # Madau & Dickinson 2014
     # k_CC = integral(phi(m), m_min, m_max) / integral(m * phi(m), m_l, m_u)
     # bpass - max = 100, min = 1
 
     denominator, _ = integrate.quad(lambda m: m * _imf(m), 1, 100)
-    if sn_type == 2:
+    if sn_type == 20:
         # up to 25 solar masses for type 2 
         numerator, _ = integrate.quad(_imf, 8, 25)
         #numerator, _ = integrate.quad(_imf, 8, 100)
-    elif sn_type == 1:
+    elif sn_type == 10:
         # 25 to 100 solar mass for type 1b/c
         numerator, _ = integrate.quad(_imf, 25, 100)
         #numerator, _ = integrate.quad(_imf, 8, 100)
+
+    return numerator/denominator
+"""
+
+def supernova_efficiency(_imf, sn_type=20):
+    # Madau & Dickinson 2014
+    # k_CC = integral(phi(m), m_min, m_max) / integral(m * phi(m), m_l, m_u)
+    # bpass - max = 100, min = 1
+
+    # Smith 2014
+    # Binaries: IIP 8.5-18, II-Other 18-37, Ib 8.5-12/4
+    # IIP 8.5-13.7, II-Other 13.7-22, Ibc 22-100
+
+    denominator, _ = integrate.quad(lambda m: m * _imf(m), 1, 100)
+    if sn_type == 20:
+        # up to 25 solar masses for type 2 
+        numerator, _ = integrate.quad(_imf, 8.5, 13.7)
+    elif sn_type == 25:
+        # up to 25 solar masses for type 2 
+        numerator, _ = integrate.quad(_imf, 13.7, 22)
+    elif sn_type == 10:
+        # 25 to 100 solar mass for type 1b/c
+        numerator, _ = integrate.quad(_imf, 22, 100)
 
     return numerator/denominator
 
@@ -541,10 +565,12 @@ test_dict = {}
 for sn_type in all_sn_types:
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
     print(sn_type)
-    if sn_type in ["IIP", "II-Other"]:
-        kcc_type = 2
+    if sn_type in ["IIP"]:
+        kcc_type = 20
+    elif sn_type in ["II-Other"]:
+        kcc_type = 25
     elif sn_type in ["Ib", "Ic"]:
-        kcc_type = 1
+        kcc_type = 10
     else:
         kcc_type = None
 
@@ -599,7 +625,7 @@ for item in test_dict.items():
 
     sf_ratio = sum(csfrh/total_sfr)/len(csfrh)
     sn_ratio = sum(csnrh/total_snr)/len(csnrh)
-    print(name, sn_ratio, sf_ratio)
+    print(f'{name}: \n  SN:{sn_ratio*100:.1f}\n  SF: {sf_ratio*100:.1f}')
     #print(sum(csnrh/total_snr), len(csnrh))
     ratios.append(sn_ratio)
 
