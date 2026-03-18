@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 2.5
+mode = 3
 
 # region Imports
 import pandas as pd
@@ -247,9 +247,15 @@ elif mode == 2:
 
     #myDataExtractor.plotAllPolynomials('_chab100', 'bin')
 
+elif mode == 2.4:
+    bpassAnalysis.generateAgeSpecific('_chab100', 'bin')
+    bpassAnalysis.generateCoeffs('_chab100', 'bin', 7.4, True)
+    #bpassAnalysis.generateCoeffs('170_100', 'bin', 7.4, True)
+
 elif mode == 2.5:
     bpassAnalysis.generateCoeffs('_chab100', 'bin', 7.4, True)
     #bpassAnalysis.generateCoeffs('170_100', 'bin', 7.4, True)
+
 
 #region SN Rate selection 
 elif mode == 3: 
@@ -297,31 +303,21 @@ elif mode == 3:
 
     all_results_df.to_csv("/Users/dan/Code/FYP/Data/TNG/dummy_out.csv")
 
-    # NEW: Supernova Rate = Number of supernova/time then divide by mass to get supernova/yr/solar mass
-    # ccSNRate is actually the NUMBER of supernova not the rate so ccSNRate/
-    pixel_snr = all_results_df["ccSNRate"] / (all_results_df["Age_Myr"] * 1e6)
-    pixel_snr_solar = pixel_snr / all_results_df["Mass"]
-    
-    # NEW: sum of the supernova rates in yr-1 
-    subhalo_snr_no_mass = pixel_snr.sum()
-
-    print('TOTAL MASS', sum(all_results_df["Mass"]))
-    
-    # halo volume calculated in Gpc^3 from TNG gas data
-    # all rows contain same value for the halo volume 
-    halo_volume = all_results_df["Halo_Volume"].iloc[0]
-
-    # supernova rate density 
-    # ccSNRate is a number not a rate 
+    # POST BPASS UPDATE 
     total_supernova_number = sum(all_results_df["ccSNRate"])
-    # sum the total snr per solar mass for the subhalo in yr-1 Mo-1
-    subhalo_snr = sum(pixel_snr_solar)
-    # calculate subhalo snr per halo volume 
-    subhalo_snr_density = subhalo_snr / halo_volume
+    
+    # ccSNRate now gives an event rate in [yr-1]
+    pixel_snr = all_results_df["ccSNRate"]
+    pixel_snr_solar = pixel_snr / all_results_df["Mass"]
 
-    # similar method for sfrd 
-    # sfr is constant across all rows of data
+    # sum pixel level to get to halo level rates
+    subhalo_snr = sum(pixel_snr)
+    subhalo_snr_solar = sum(pixel_snr_solar)
+
+    # halo level densities
+    halo_volume = all_results_df["Halo_Volume"].iloc[0]
     subhalo_sfr = all_results_df['Halo_SFR'].iloc[0]
+    subhalo_snr_density = subhalo_snr / halo_volume
     subhalo_sfr_density = subhalo_sfr / halo_volume
 
     # other details 
@@ -333,9 +329,8 @@ elif mode == 3:
         'id': subhalo_id,
         'sfr': subhalo_sfr,
         'sfrd': subhalo_sfr_density,
-        'sn': total_supernova_number,
         'snr': subhalo_snr,
-        'snr_no_mass': subhalo_snr_no_mass,
+        'snr_solar': subhalo_snr_solar,
         'snrd': subhalo_snr_density,
         'mass':mass,
         'z': z, 

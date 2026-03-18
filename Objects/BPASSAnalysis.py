@@ -79,32 +79,32 @@ class BPASSAnalysis():
                     if mtlData.sinbin == sinbin:
                         mtl = mtlData.mtl
                         df = mtlData.data
-
+                        #print('mtl', mtl)
                         for _, row in df.iterrows():
                             age = row['Log(age/yrs)']
                             bin_width = row['Length']
-                            print('bin width', bin_width)
+                            #print(f' age: {age}, bin width: {bin_width}')
                             if age not in ageDataframes:
                                 ageDataframes[age] = []
 
                             ageDataframes[age].append({
                                 'mtl': mtl,
-                                'Ia': row['Ia'],
-                                'Err_Ia': row['Err_Ia'],
-                                'IIP': row['IIP'],
-                                'Err_IIP': row['Err_IIP'],
-                                'II-other': row['II-other'],
-                                'Err_II-other': row['Err_II-other'],
-                                'Ib': row['Ib'],
-                                'Err_Ib': row['Err_Ib'],
-                                'Ic': row['Ic'],
-                                'Err_Ic': row['Err_Ic'],
-                                'Long-GRB': row['Long-GRB'],
-                                'Err_Long-GRB': row['Err_Long-GRB'],
-                                'Pair-Instab': row['Pair-Instab'],
-                                'Err_Pair-Instab': row['Err_Pair-Instab'],
-                                'Low-mass': row['Low-mass'],
-                                'Err_Low-mass': row['Err_Low-mass'],
+                                'Ia': row['Ia']/ bin_width,
+                                'Err_Ia': row['Err_Ia']/ bin_width,
+                                'IIP': row['IIP']/ bin_width,
+                                'Err_IIP': row['Err_IIP']/ bin_width,
+                                'II-other': row['II-other'] / bin_width,
+                                'Err_II-other': row['Err_II-other']/ bin_width,
+                                'Ib': row['Ib']/ bin_width,
+                                'Err_Ib': row['Err_Ib']/ bin_width,
+                                'Ic': row['Ic']/ bin_width,
+                                'Err_Ic': row['Err_Ic']/ bin_width,
+                                'Long-GRB': row['Long-GRB']/ bin_width,
+                                'Err_Long-GRB': row['Err_Long-GRB']/ bin_width,
+                                'Pair-Instab': row['Pair-Instab']/ bin_width,
+                                'Err_Pair-Instab': row['Err_Pair-Instab']/ bin_width,
+                                'Low-mass': row['Low-mass']/ bin_width,
+                                'Err_Low-mass': row['Err_Low-mass']/ bin_width,
                             })
 
         # Convert lists to DataFrames and save as CSV
@@ -135,7 +135,7 @@ class BPASSAnalysis():
 
         i = 0
         coeffDataframe = []
-        myPlot, ax = plt.subplots()
+        myPlot, ax = plt.subplots(figsize=(8,7))
         for header in headers:
             # Skip error columns
             if 'Err_' not in header:
@@ -274,21 +274,24 @@ class BPASSAnalysis():
                 ax.plot(xPlot, polyPlot, label=header, color=colours[i])
                 #ax.scatter(allMtls, snRates, color=colours[i])#, yerr=errSnRates, fmt='o', label="_nolegend_", color=colours[i])
                 ax.errorbar(allMtls, snRates, yerr=errSnRates, fmt='o', label="_nolegend_", color=colours[i])
-                ax.set_yscale('log')
-                ax.set_ylabel('Log SN Rate')
-                ax.set_xlabel('Z')
-                ax.set_title(f'Age: {age}') 
+                #ax.set_yscale('log')
+                myPlot.subplots_adjust(bottom=0.2, right=0.95)
+                ax.set_ylabel(r'Event Rate [$\mathrm{yr^{-1}}$]')
+                ax.set_xlabel('Metallicity (Z)')
+                ax.set_title(f'BPASS Age Bin: {age:.2} log(yrs)') 
+        
+        handles, labels = ax.get_legend_handles_labels()
+        myPlot.legend(handles, labels,loc='lower center',ncol=3, frameon=False)
 
         # If plot is true open and show plots
         if plot: 
-            myPlot.legend()
             myPlot.show()
             plt.show()
         
+        
         # Save the plot figure
         full_path = os.path.join(self.imagePath + f"/imf{imf}/Coeff", f"plot-{sinbin}-imf{imf}.Age{str(round(age,2)).replace('.','_')}yrs.png")
-        myPlot.legend()
-        myPlot.savefig(full_path)  
+        myPlot.savefig(full_path, dpi=300)  
         plt.close(myPlot)
 
         # save to csv 
@@ -502,30 +505,20 @@ class BPASSAnalysis():
 
         all_results_df = pd.DataFrame(result_rows)
         all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Halo_ID', 'Halo_SFR', 'Halo_Volume', 'Number_of_Subhalos', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
-        
-        # NEW: Supernova Rate = Number of supernova/time then divide by mass to get supernova/yr/solar mass
-        # ccSNRate is actually the NUMBER of supernova not the rate so ccSNRate/
-        pixel_snr = all_results_df["ccSNRate"] / (all_results_df["Age_Myr"] * 1e6)
+         
+        # POST BPASS UPDATE 
+        # ccSNRate now gives an event rate in [yr-1]
+        pixel_snr = all_results_df["ccSNRate"]
         pixel_snr_solar = pixel_snr / all_results_df["Mass"]
-        
-        # NEW: sum of the supernova rates in yr-1 
-        subhalo_snr_no_mass = pixel_snr.sum()
-        
-        # halo volume calculated in Gpc^3 from TNG gas data
-        # all rows contain same value for the halo volume 
+
+        # sum pixel level to get to halo level rates
+        subhalo_snr = sum(pixel_snr)
+        subhalo_snr_solar = sum(pixel_snr_solar)
+
+        # halo level densities
         halo_volume = all_results_df["Halo_Volume"].iloc[0]
-
-        # supernova rate density 
-        # ccSNRate is a number not a rate 
-        total_supernova_number = sum(all_results_df["ccSNRate"])
-        # sum the total snr per solar mass for the subhalo in yr-1 Mo-1
-        subhalo_snr = sum(pixel_snr_solar)
-        # calculate subhalo snr per halo volume 
-        subhalo_snr_density = subhalo_snr / halo_volume
-
-        # similar method for sfrd 
-        # sfr is constant across all rows of data
         subhalo_sfr = all_results_df['Halo_SFR'].iloc[0]
+        subhalo_snr_density = subhalo_snr / halo_volume
         subhalo_sfr_density = subhalo_sfr / halo_volume
 
         # other details 
@@ -537,9 +530,8 @@ class BPASSAnalysis():
             'id': subhalo_id,
             'sfr': subhalo_sfr,
             'sfrd': subhalo_sfr_density,
-            'sn': total_supernova_number,
             'snr': subhalo_snr,
-            'snr_no_mass': subhalo_snr_no_mass,
+            'snr_solar': subhalo_snr_solar,
             'snrd': subhalo_snr_density,
             'mass':mass,
             'z': z, 

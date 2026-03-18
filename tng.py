@@ -65,7 +65,7 @@ def count_lines_fast(path):
 
 # region Build
 def build_rates(snap):
-    build_type = "IIP"
+    build_type = "II-Other"
     position = snapshots.index(snap) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
     my_glob = glob.glob(input_path)
@@ -134,43 +134,14 @@ def calculate_densities(snaps):
         #box_size_phys = box_size / (1 + redshift)**3  # Mpc^3 physical WRONG
 
         # total snrd in the box 
-        # found by summing all the snr (each subhalo)
+        # found by summing all the snr (each subhalo yr-1 Mpc-3)
         total_snr = sum(subhalo_df["snr"])
         # divide by the total box volume 
         total_snrd = total_snr / box_size
         snrd_box.append(total_snrd)
-        
-        """
-        # find weighting 
-        new_rate = subhalo_df["snr"] * subhalo_df["mass"]
-        total = np.sum(new_rate)
-        top10 = np.sum(np.sort(new_rate)[-10:])
-        rfract_max = max(new_rate) / total
-        rfract_ten = top10 / total
-        mfract_max = max(subhalo_df["mass"])/sum(subhalo_df["mass"])
-        mfract_ten = np.sum(np.sort(subhalo_df["mass"])[-10:])/sum(subhalo_df["mass"])
 
-        if mfract_ten > 0.5:
-            if mfract_max > 0.5:
-                print(f"Snapshot {snap}: Mass Dominated by massive: {mfract_max}")
-            else:
-                print(f"Snapshot {snap}: Mass Dominated by top 10: {mfract_ten}")
-
-        if rfract_ten > 0.5:
-            if rfract_max > 0.5:
-                print(f"Snapshot {snap}: Rate Dominated by massive: {rfract_max}")
-            else:
-               print(f"Snapshot {snap}: Rate Dominated by top 10: {rfract_ten}")
-        """
-     
-        # NEW SNRD Calculation (different units)
-        # removes the mass dependance by multipying by the halo mass first 
-        total_snr_times_mass = sum(subhalo_df["snr"] * subhalo_df["mass"])
-        total_snrd_no_mass = total_snr_times_mass / box_size
-        snrd_no_mass_box.append(total_snrd_no_mass)
-
-        # NEW SNRD Calculations (without multiplying by mass)
-        total_snr_new = sum(subhalo_df["snr_no_mass"])
+        # total SNRD Calculations (different units yr-1 Mo-1 Mpc-3)
+        total_snr_new = sum(subhalo_df["snr_solar"])
         total_snrd_new = total_snr_new / box_size
         snrd_no_mass_new.append(total_snrd_new)
 
