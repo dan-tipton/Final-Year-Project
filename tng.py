@@ -216,7 +216,7 @@ def curve_md14(redshifts, array):
     # Initial guess use the value isn madau and dickinson 
     p0 = [0.015, 2.7, 2.9, 5.6]
     params, cov = curve_fit(sfrd_func, redshifts, array, p0=p0)
-    print('params', params)
+    #print('params', params)
     x_linespace = np.linspace(redshifts.min(), redshifts.max(), 300)
     md14_fit = sfrd_func(x_linespace, *params)
 
@@ -412,9 +412,11 @@ def supernova_efficiency(_imf, sn_type=2):
     if sn_type == 2:
         # up to 25 solar masses for type 2 
         numerator, _ = integrate.quad(_imf, 8, 25)
+        #numerator, _ = integrate.quad(_imf, 8, 100)
     elif sn_type == 1:
         # 25 to 100 solar mass for type 1b/c
         numerator, _ = integrate.quad(_imf, 25, 100)
+        #numerator, _ = integrate.quad(_imf, 8, 100)
 
     return numerator/denominator
 
@@ -439,7 +441,7 @@ def cosmic_level(snaps, kcc_type):
     # this can be applied to the SNRD to get SNRD estimates for the whole box 
     sfrd_scaling = rev_sfrd_all/rev_sfrd_1000
 
-    print("scaling from top 1000 to all subhalos for sfr", sfrd_scaling)
+    #print("scaling from top 1000 to all subhalos for sfr", sfrd_scaling)
     rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
     rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
     rev_snrd_mass_scaled = rev_snrd_mass * sfrd_scaling
@@ -507,7 +509,8 @@ def cosmic_level(snaps, kcc_type):
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
-    return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
+    #return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
+    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
@@ -520,18 +523,20 @@ if build == True:
         for f in tqdm(as_completed(futures), total=len(futures)):
             results.append(f.result())
 
-all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
-#sn_type = "Ic"
-all_sn_types = ["IIP"]
-
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
 fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
-fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
-fig_types1, ax_total, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
+all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
+
+total_sfr = []
+total_snr = []
+
+test_dict = {}
 
 for sn_type in all_sn_types:
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
@@ -544,17 +549,59 @@ for sn_type in all_sn_types:
         kcc_type = None
 
     halo_level(snapshots)
-    snrd, sfrh, snrd_md14, sfrh_md14 = cosmic_level(snapshots, kcc_type)
+    snrd, sfrh, snrd_md14, sfrh_md14, sfrh_halos = cosmic_level(snapshots, kcc_type)
 
-    plot_names = ['1', '2', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
+    if len(total_sfr) == 0:
+        total_sfr = sfrh
+    else:
+        total_sfr = total_sfr + sfrh
+
+    if len(total_snr) == 0:
+        total_snr = snrd
+    else:
+        total_snr = total_snr + snrd
+
+    plot_names = ['1', '2', '3', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
-        if idx > 1:
+        if idx > 2:
             curr_fig = plt.figure(fig_num)
             plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
             plt.close(curr_fig)
 
-    ax_types1.plot(redshift_linespace, snrd, label=f'{sn_type}')
-    plt_labels(fig_types1, ax_types1, 2)
+    ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}')
+    test_dict[sn_type] = [sfrh, snrd]
 
+ax_types1.plot(rev_redshifts, total_snr, label=f'total', linestyle='--')
+plt_labels(fig_types1, ax_types1, 2)
 
-#plt.show()
+ax_total_sfr.plot(rev_redshifts, total_sfr, label=f'TNG100-1', color='orange')
+ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'MD14', color='navy')
+ax_total_sfr.plot(rev_redshifts, sfrh_halos, label=f'Group Catalog', color='lime')
+plt_labels(fig_total_sfr, ax_total_sfr, 2)
+
+kcc = supernova_efficiency(imf.chabrier)
+ax_total_snr.plot(rev_redshifts, total_snr, label=f'TNG100-1', color='orange')
+ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'MD14', color='navy')
+#ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Group Catalog', color='lime')
+plt_labels(fig_total_snr, ax_total_snr, 2)
+
+fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
+fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
+
+plt.close(fig_total_sfr)
+plt.close(fig_total_snr)
+
+ratios = []
+for item in test_dict.items():
+    name = item[0]
+    csfrh = item[1][0]
+    csnrh = item[1][1]
+
+    sf_ratio = sum(csfrh/total_sfr)/len(csfrh)
+    sn_ratio = sum(csnrh/total_snr)/len(csnrh)
+    print(name, sn_ratio, sf_ratio)
+    #print(sum(csnrh/total_snr), len(csnrh))
+    ratios.append(sn_ratio)
+
+print('total', sum(ratios))
+plt.show()

@@ -139,6 +139,7 @@ def build_rates(snap):
 
 def main():
     snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
+    snapshots = [80]
     results = []
 
     # Use processes instead of threads for CPU-bound work
