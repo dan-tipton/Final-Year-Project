@@ -445,7 +445,8 @@ def supernova_efficiency(_imf, sn_type=20):
     return numerator/denominator
 
 def imf_scaling(_imf):
-    return integrate.quad(_imf, 0.1, 1)
+    integral, _ = integrate.quad(_imf, 0.1, 1)
+    return integral
 
 # region Plot Cosmic Level
 def cosmic_level(snaps, kcc_type):
@@ -501,14 +502,16 @@ def cosmic_level(snaps, kcc_type):
     csnrh_chabrier = csfrh * kcc_chabrier
     csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
 
-    # imf scaling 
-
     # trace sfrd using snrd 
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
     csfrh_kcc_chabrier = md14_snrd_scaled / kcc_chabrier
     csfrh_kcc_chabrier_raw = rev_snrd_1000_scaled / kcc_chabrier
 
     artificial = 4 * md14_snrd_scaled / kcc_chabrier
+
+    chab_scale = imf_scaling(imf.chabrier)
+    csfrh_bpass_scale = csfrh_kcc_chabrier / chab_scale
+
     
     # CSNRH plot
     fig_csnrh, ax_csnrh1, ax_csnrh2 = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
@@ -531,8 +534,9 @@ def cosmic_level(snaps, kcc_type):
     # lines
     ls_csfrh2, = ax_csfrd.plot(redshift_linespace, md14_sfrd_all, linestyle='--', color='lime', label="TNG100 - All")
     ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh, linestyle='-', color='teal', label="Madau & Dickinson 2014")
-    ls_csfrh4, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label=f"TNG100 (II-Other) (kcc={kcc_chabrier:.3})")
+    ls_csfrh4, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier, linestyle='--', color='gold', label=f"TNG100 (kcc={kcc_chabrier:.3})")
     ls_csfrh5, = ax_csfrd.plot(redshift_linespace, artificial, linestyle='--', color='orange', label=f"Artifical (Gold * 4) (kcc={kcc_chabrier:.3})")
+    ls_csfrh5, = ax_csfrd.plot(redshift_linespace, csfrh_bpass_scale, linestyle='--', color='red', label=f"Chabrier Scaling (0.1-1 Mo)")
     #ls_csfrh3, = ax_csfrd.plot(redshift_linespace, csfrh_kcc_chabrier_noscale, linestyle='--', color='gold', label="TNG100 - Kcc Chabrier no scale)")
 
     plt_labels_multiple(fig_csnrh, [ax_csnrh1, ax_csnrh2], 2)
