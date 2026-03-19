@@ -444,6 +444,9 @@ def supernova_efficiency(_imf, sn_type=20):
 
     return numerator/denominator
 
+def imf_scaling(_imf):
+    return integrate.quad(_imf, 0.1, 1)
+
 # region Plot Cosmic Level
 def cosmic_level(snaps, kcc_type):
     redshifts, snrd, sfrd_1000, snrd_alt, snrd_mass = calculate_densities(snaps)
@@ -497,6 +500,8 @@ def cosmic_level(snaps, kcc_type):
     csnrh_salpeter = csfrh * kcc_salpeter
     csnrh_chabrier = csfrh * kcc_chabrier
     csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
+
+    # imf scaling 
 
     # trace sfrd using snrd 
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
