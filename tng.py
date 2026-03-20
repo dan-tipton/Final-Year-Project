@@ -331,7 +331,8 @@ def halo_level(snaps):
         # convert to Mpc3 from Gpc3 => times 1e-9
         sfrd = subhalo_df['sfrd']*1e-9
         snrd = subhalo_df["snrd"]*1e-9
-        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        # changed from using snr to snr_solar for comparioison to BPASS paper
+        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr_solar"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
         ax_hrd.scatter(sfrd, snrd, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
 
         # add to list to be used in histogram
