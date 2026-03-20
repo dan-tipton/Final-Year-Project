@@ -306,11 +306,12 @@ def line_fit(x, y):
 def halo_level(snaps):
     
     # set up figures and axes
-    fig_halo_rate, ax_hr = plt_helper(8,7, r'SFR (Star Formation) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.2)
-    fig_halo_density, ax_hrd = plt_helper(8,7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
-    fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]')
-    fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
-    fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova) [$\mathrm{yr^{-1}\ M_\odot^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
+    fig_halo_rate, ax_hr = plt_helper(8,7, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
+    fig_halo_density, ax_hrd = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
+    fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
+    fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
+    fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
+    fig_mass, ax_mass = plt_helper(8, 7, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.15)
 
     all_snrd = []
     all_sfrd = []
@@ -331,15 +332,22 @@ def halo_level(snaps):
         # convert to Mpc3 from Gpc3 => times 1e-9
         sfrd = subhalo_df['sfrd']*1e-9
         snrd = subhalo_df["snrd"]*1e-9
-        # changed from using snr to snr_solar for comparioison to BPASS paper
-        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr_solar"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
         ax_hrd.scatter(sfrd, snrd, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
 
-        # add to list to be used in histogram
+        # snr_solar should be calculated as sum(pixel_snr)/sum(mass)
+        # these values corrosponds to bpass paper 
+        snr_solar = subhalo_df["snr"]/subhalo_df['mass']
+        ax_mass.scatter(subhalo_df['mass'], snr_solar, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+
+        # add to list to be used in 2d density histogram
         all_sfrd.append(sfrd)
         all_snrd.append(snrd)
 
         # add to average list 
+        # average should be snrd in yr-1 Mpc-3 and sfrd in Mo yr-1 Mpc-3
+        # this means an effective kcc scaling can be calculated in Mo-1 (should be linear)
+        # snrd is now calulated in these unit in BPASS analysis as event rates are in yr-1
         av_snrd, av_sfrd = average_rate_densities(snrd, sfrd)
         all_av_snrd.append(av_snrd)
         all_av_sfrd.append(av_sfrd)
@@ -597,7 +605,7 @@ for sn_type in all_sn_types:
     else:
         total_snr = total_snr + snrd
 
-    plot_names = ['1', '2', '3', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'cosmic_snr', 'cosmic_sfr']
+    plot_names = ['1', '2', '3', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
         if idx > 2:
             curr_fig = plt.figure(fig_num)
