@@ -265,9 +265,12 @@ def mass_bins(data):
                 zs.append(z1)
             ax.plot(zs, avs, label=f'av_{sn}', color=colors1[idx])
             ax.set_title(f"Mass: {label_left} -> {label_right}")
+            ax.set_ylabel('Supernova Fraction')
+            ax.set_xlabel('Redshift')
+            ax.legend()
 
 
-        fig.savefig(f"Data/Images/TNG/ratio/redshift/{png_name}", dpi=300)
+        fig.savefig(f"Data/Images/TNG/ratio/redshift/m{mass_bin.left}.png", dpi=300)
 
     combined_base = os.path.join(base, 'Data/TNG/Combined')
     df_all.to_csv(combined_base + f"/dummyall.csv")
@@ -309,10 +312,10 @@ def run_cosmic():
         ax.plot(z, ratio, color=colors1[idx])
 
     fig.savefig(f"Data/Images/TNG/ratio/cosmic.png", dpi=300)
-    plt.show()
     return 0
 
-#run_mass()
+run_redshift()
+run_mass()
 run_cosmic()
 
 
