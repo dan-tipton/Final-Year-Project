@@ -629,12 +629,14 @@ ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'MD14', color='navy')
 #ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Group Catalog', color='lime')
 plt_labels(fig_total_snr, ax_total_snr, 2)
 
+fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
 fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
 fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
 
 plt.close(fig_total_sfr)
 plt.close(fig_total_snr)
 
+fig_ratio, ax_ratio = plt_helper(8, 7, "redshift",  r'Supernova Fraction', logx=False, logy=False, legendspace=0.2)
 ratios = []
 for item in test_dict.items():
     name = item[0]
@@ -647,5 +649,7 @@ for item in test_dict.items():
     #print(sum(csnrh/total_snr), len(csnrh))
     ratios.append(sn_ratio)
 
+    ax_ratio.plot(rev_redshifts, csnrh/total_snr)
+
+fig_ratio.savefig("Data/Images/TNG/final/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))
-plt.show()

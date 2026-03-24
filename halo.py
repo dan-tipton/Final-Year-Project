@@ -38,16 +38,13 @@ from functools import reduce
 from matplotlib.animation import FuncAnimation, PillowWriter
 
 base = os.getcwd()
-
 rate_base = os.path.join(base, 'Data/TNG/Rates')
 sn_type = ["IIP", "II-Other", "Ib", "Ic"]
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 cols_suffix = ["sfr_", "sfrd_", "snr_", "snrs_", "snrd_"]
 cols_suffix_2 = ["sfr_", "snr_", "snrs_"]
 colors = ['#FF5733', '#33FF57', '#3357FF', "#FFD012"]
-
-from functools import reduce
-import pandas as pd
+colors1 = ["#C13D20", "#1EC93E", "#1D36A7", "#C7A20F"]
 
 # merge function
 def merge_keep_one(left, right):
@@ -55,7 +52,6 @@ def merge_keep_one(left, right):
     cols = ['id'] + [c for c in right.columns if c not in left.columns]
     
     return pd.merge(left, right[cols], on='id', how='inner')
-
 
 # join data frames based on subhalo 
 # produce one csv for each redshisft
@@ -95,53 +91,52 @@ def ratio_calc(save=None):
     
     return all
 
-def plotter(snaps, png_name='ratio.png', pcols=1):
+# plot and calculate avergae
+def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     dfs = ratio_calc()
-    if type(snaps) != int:
-        num = len(snaps)
-        prows = math.ceil(num / pcols)  
-        fig, ax = plt.subplots(prows, pcols, figsize=(15, 5))
-        ax = ax.flatten() 
-        for i, s in enumerate(snaps):
-            df = dfs[s]
 
-            for idx, sn in enumerate(sn_type):
-                curr = f"snr_{sn}_ratio"
-                ratio = df[curr]
-                mass = df["mass"]
-                z = df["z"].iloc[0]
+    # Ensure snaps is always a list for processing
+    if isinstance(snaps, int):
+        snaps = [snaps]
 
-                ax[i].scatter(mass, ratio, label=f'{sn}', color=colors[idx], marker='.')
-                ax[i].set_ylabel("ratio")
-                ax[i].set_xlabel("mass")
-                ax[i].set_xscale('log')
-                ax[i].set_title(f"Redshift={z:.2f}")
-        
-        handles, labels = ax[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    num = len(snaps)
+    prows = math.ceil(num / pcols)
+    fig, axes = plt.subplots(prows, pcols, figsize=(8, 7*prows))
+    axes = axes.flatten() if num > 1 else [axes]
 
-    else:
-        num = 1
-        fig, ax = plt.subplots(figsize=(8, 7))
-        df = dfs[snaps]
+    ratio_data = {}
+
+    for i, s in enumerate(snaps):
+        df = dfs[s]
+        z = df["z"].iloc[0]
+
+        sub_data = {}
+        sub_data['Redshift'] = round(z,2)
         for idx, sn in enumerate(sn_type):
-            curr = f"snr_{sn}_ratio"
-            ratio = df[curr]
+            ratio = df[f"snr_{sn}_ratio"]
             mass = df["mass"]
-            z = df["z"].iloc[0]
 
-            ax.scatter(mass, ratio, label=f'{sn}', color=colors[idx], marker='.')
-            ax.set_ylabel("ratio")
-            ax.set_xlabel("mass")
-            ax.set_xscale('log')
-            ax.set_title(f"Redshift={z:.2f}")
+            axes[i].scatter(mass, ratio, label=sn, color=colors[idx], marker='.')
 
-        handles, labels = ax.get_legend_handles_labels()
-        fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+            # calcaulate an average ratio for each sn type at each redshift
+            sub_data[sn] = round(np.mean(ratio) * 100, 2)
+            # # standard error of the mean  -> (standard deviation (sample std, N-1))
+            std_dev = np.std(ratio, ddof=1)  # ddof=1 gives sample std
+            std_error = std_dev / np.sqrt(len(ratio))
+            sub_data[f'{sn}_err'] = round(std_error * 100, 2)
+
+        ratio_data[s] = sub_data
+        axes[i].set_ylabel("ratio")
+        axes[i].set_xlabel("mass")
+        axes[i].set_xscale('log')
+        axes[i].set_title(f"Redshift={z:.2f}")
+
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.savefig(f"Data/Images/TNG/ratio/mass/{png_name}", dpi=300)
     
-    fig.tight_layout(rect=[0, 0.05, 1, 1])  # leave space for legend
-    fig.savefig(f"Data/Images/TNG/ratio/{png_name}", dpi=300)
-    return fig
+    return fig, ratio_data
 
 def animate_seperate(snaps, save_gif=False, gif_name="animation_seperate.gif"):
     dfs = ratio_calc()  # your function
@@ -188,7 +183,6 @@ def animate_seperate(snaps, save_gif=False, gif_name="animation_seperate.gif"):
     ani.save(gif_name, writer=PillowWriter(fps=1))  # fps=1 → 1 frame per second
     return ani
 
-
 def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
     dfs = ratio_calc()  # your function returning a dict of DataFrames
 
@@ -225,8 +219,101 @@ def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
 
     return ani
 
-for s in snapshots:
-    sfig = plotter(s, png_name=f"ratio_s{s}.png")
+def mass_bins(data):  
+    # group all data
+    dfs = []
+    for s in data.keys():
+        df = data[s].copy()
+        dfs.append(df)
+    df_all = pd.concat(dfs, ignore_index=True)
+
+    # define bins
+    n_bins = 10
+    m_min = df_all["mass"].min()
+    m_max = df_all["mass"].max()
+    bins = np.logspace(np.log10(m_min), np.log10(m_max), n_bins + 1)
+    print('here', bins)
+    df_all["mass_bin"] = pd.cut(df_all["mass"], bins=bins)
+
+    # grouped tables
+    grouped_tables = {
+        mass_bin: group.sort_values("z")
+        for mass_bin, group in df_all.groupby("mass_bin")
+    }
+
+    for mass_bin, table in grouped_tables.items():
+        fig, ax = plt.subplots(figsize=(8, 7))
+        for idx, sn in enumerate(sn_type):
+            ratio = table[f"snr_{sn}_ratio"]
+            z = table["z"]
+            zset = set(z)
+            print('now', zset)
+
+            ax.scatter(z, ratio, label=sn, color=colors[idx], marker='.')
+
+            mantissa_left, exponent_left = f"{mass_bin.left:.0e}".split("e")
+            label_left = rf"${mantissa_left}\times 10^{{{int(exponent_left)}}}$"
+
+            mantissa_right, exponent_right = f"{mass_bin.right:.0e}".split("e")
+            label_right = rf"${mantissa_right}\times 10^{{{int(exponent_right)}}}$"
+
+            zs = []
+            avs = []
+            for z1 in sorted(zset):  
+                fdf = table[table['z'] == z1]  
+                avs.append(np.mean(fdf[f"snr_{sn}_ratio"]))
+                zs.append(z1)
+            ax.plot(zs, avs, label=f'av_{sn}', color=colors1[idx])
+            ax.set_title(f"Mass: {label_left} -> {label_right}")
+
+
+        fig.savefig(f"Data/Images/TNG/ratio/redshift/{png_name}", dpi=300)
+
+    combined_base = os.path.join(base, 'Data/TNG/Combined')
+    df_all.to_csv(combined_base + f"/dummyall.csv")
+    return 0
+
+def run_mass():
+    dfs = ratio_calc()
+    dfs_mass = mass_bins(dfs)
+    return 0
+
+def run_redshift():
+    all_rows = []
+    for s in snapshots:
+        sfig, data = redshift_bins(s, png_name=f"ratio_s{s}.png")
+        df = pd.DataFrame.from_dict(data, orient='index')
+        df.index.name = 'Snapshot'
+        df.reset_index(inplace=True)
+        all_rows.append(df)
+
+    all_data = pd.concat(all_rows, ignore_index=True)
+    all_data.to_csv('Final/Data/all_snapshots_ratio.csv', index=False)
+
+    # Convert to LaTeX
+    latex_table = all_data.to_latex(index=False, float_format="%.2f")
+    with open("Final/Data/all_snapshots_ratio.tex", "w") as f:
+        f.write(latex_table)
+
+    return all_data
+
+def run_cosmic():
+    df = pd.read_csv('Final/Data/all_snapshots_ratio.csv')
+
+    fig, ax = plt.subplots(figsize=(8, 7))
+    for idx, sn in enumerate(sn_type):
+        z = df["Redshift"]
+        ratio = df[f'{sn}']
+        err = df[f'{sn}_err']
+        ax.errorbar(z, ratio, yerr=err, color=colors[idx], label=f'{sn}')
+        ax.plot(z, ratio, color=colors1[idx])
+
+    fig.savefig(f"Data/Images/TNG/ratio/cosmic.png", dpi=300)
+    plt.show()
+    return 0
+
+#run_mass()
+run_cosmic()
 
 
 """
@@ -239,11 +326,11 @@ fig1 = plotter(snaps1, png_name='s2_10_20.png')
 fig2 = plotter(snaps2, png_name='s26_32_40.png')
 fig3 = plotter(snaps3, png_name='s50_57_66.png')
 fig4 = plotter(snaps4, png_name='s2_10_20.png')
-"""
 
 #new = np.array(snapshots)[::-1]
 #animate_plotter(new, save_gif=True)
 #animate_seperate(new, save_gif=True)
 
 #plt.show()
+"""
 
