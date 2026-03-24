@@ -42,6 +42,7 @@ tqdm.set_lock(RLock())
 MAX_WORKERS = 4
 colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'limegreen', 'purple', 'pink', 'grey', 'black']
 colours = ['#800080',"#1a1a1a", "#3714ff", '#c0c0c0', "#1fb81f", '#40e0d0','#ffd700','#ffa500','#ff7f50',"#f53eff","#ff0000", '#87ceeb']
+sn_colours = ['#FF5733', '#33FF57', '#3357FF', "#FFD012", "#B53DFF"]
 
 bpass = BPASSDataFormatter()
 allSupernovaArray, allIonizingArray, combinedSupernovaIon = bpass.getAllFormattedData()
@@ -240,9 +241,12 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
     return fig, ax
 
 # set labels for axes 
-def plt_labels(fig, ax, col):
+def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)
+
+    if gap != None:
+        fig.tight_layout(rect=[0, gap, 1, 1])
 
     return fig, ax
 
@@ -580,7 +584,7 @@ total_snr = []
 
 test_dict = {}
 
-for sn_type in all_sn_types:
+for i, sn_type in enumerate(all_sn_types):
     rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
     print(sn_type)
     if sn_type in ["IIP"]:
@@ -612,22 +616,22 @@ for sn_type in all_sn_types:
             plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
             plt.close(curr_fig)
 
-    ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}')
+    ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}', color=sn_colours[i])
     test_dict[sn_type] = [sfrh, snrd]
 
-ax_types1.plot(rev_redshifts, total_snr, label=f'total', linestyle='--')
+ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
 plt_labels(fig_types1, ax_types1, 2)
 
 ax_total_sfr.plot(rev_redshifts, total_sfr, label=f'TNG100-1', color='orange')
 ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'MD14', color='navy')
 ax_total_sfr.plot(rev_redshifts, sfrh_halos, label=f'Group Catalog', color='lime')
-plt_labels(fig_total_sfr, ax_total_sfr, 2)
+plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.1)
 
 kcc = supernova_efficiency(imf.chabrier)
 ax_total_snr.plot(rev_redshifts, total_snr, label=f'TNG100-1', color='orange')
 ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'MD14', color='navy')
 #ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Group Catalog', color='lime')
-plt_labels(fig_total_snr, ax_total_snr, 2)
+plt_labels(fig_total_snr, ax_total_snr, 2, 0.07)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
 fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
@@ -636,9 +640,9 @@ fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
 plt.close(fig_total_sfr)
 plt.close(fig_total_snr)
 
-fig_ratio, ax_ratio = plt_helper(8, 7, "redshift",  r'Supernova Fraction', logx=False, logy=False, legendspace=0.2)
+fig_ratio, ax_ratio = plt_helper(8, 7, "Redshift (z)",  r'Supernova Fraction', logx=False, logy=False, legendspace=0.2)
 ratios = []
-for item in test_dict.items():
+for idx, item in enumerate(test_dict.items()):
     name = item[0]
     csfrh = item[1][0]
     csnrh = item[1][1]
@@ -649,7 +653,8 @@ for item in test_dict.items():
     #print(sum(csnrh/total_snr), len(csnrh))
     ratios.append(sn_ratio)
 
-    ax_ratio.plot(rev_redshifts, csnrh/total_snr)
+    ax_ratio.plot(rev_redshifts, csnrh/total_snr, color=sn_colours[idx], label=name)
 
+plt_labels(fig_ratio, ax_ratio, 2, 0.07)
 fig_ratio.savefig("Data/Images/TNG/final/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))

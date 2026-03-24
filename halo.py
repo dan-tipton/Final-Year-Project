@@ -36,9 +36,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from functools import reduce
 from matplotlib.animation import FuncAnimation, PillowWriter
-from scipy.interpolate import UnivariateSpline
-from statsmodels.nonparametric.smoothers_lowess import lowess
 from sklearn.linear_model import LinearRegression
+from scipy import stats
 
 base = os.getcwd()
 rate_base = os.path.join(base, 'Data/TNG/Rates')
@@ -48,6 +47,9 @@ cols_suffix = ["sfr_", "sfrd_", "snr_", "snrs_", "snrd_"]
 cols_suffix_2 = ["sfr_", "snr_", "snrs_"]
 colors = ['#FF5733', '#33FF57', '#3357FF', "#FFD012"]
 colors1 = ["#C13D20", "#1EC93E", "#1D36A7", "#C7A20F"]
+
+def linear(x, slope, intercept):
+    return slope * x + intercept
 
 # merge function
 def merge_keep_one(left, right):
@@ -147,20 +149,20 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             std_dev_bin = np.std(avg_ratio, ddof=1)  # ddof=1 gives sample std
             std_error_bin = std_dev_bin / np.sqrt(len(avg_ratio))
 
-            #axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black')
+            # plot
             axes_bin[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black')
-
             axes[i].errorbar(bin_centers, avg_ratio, yerr=std_error_bin, color='black', fmt='D', capsize=5, zorder=10)
             axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
 
-            # Take log of x
-            x_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
+            # linear regress
+            z_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
+            #slope, intercept, r, p, std_err = stats.linregress(z_log, avg_ratio)
+            #regress = linear(z_log, slope, intercept)
             model = LinearRegression()
-            model.fit(x_log, avg_ratio)
-            y_pred = model.predict(x_log)
+            model.fit(z_log, avg_ratio)
+            y_pred = model.predict(z_log)
             axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
             axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
-            
             axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
             axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
 
@@ -174,7 +176,8 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
         axes_bin[i].set_ylabel("Supernova Fraction [%]")
         axes_bin[i].set_xscale('log')
         axes_bin[i].set_title(f"Redshift={z:.2f}")
-
+    
+    # legends
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
     fig.tight_layout(rect=[0, 0.1, 1, 1])
@@ -183,7 +186,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
     handles, labels = axes_bin[0].get_legend_handles_labels()
     fig_bin.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig_bin.tight_layout(rect=[0, 0.1, 1, 1])
+    fig_bin.tight_layout(rect=[0, 0.07, 1, 1])
     fig_bin.savefig(f"Data/Images/TNG/ratio/mass/reduced/b{png_name}", dpi=300)
     plt.close(fig_bin)
 
@@ -280,12 +283,20 @@ def run_cosmic():
         z = df["Redshift"]
         ratio = df[f'{sn}']
         err = df[f'{sn}_err']
+        
+        slope, intercept, r, p, std_err = stats.linregress(z, ratio)
+        regress = linear(z, slope, intercept)
+
         ax.plot(z, ratio, color=colors[idx], label=f'{sn}')
         ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=10)
         ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
         ax.plot(z, ratio, color=colors1[idx])
-        ax.set_xlabel("Redshift")
-        ax.set_ylabel("Supernova Fraction")
+
+        ax.plot(z, regress, color='black')
+        
+        
+    ax.set_xlabel("Redshift")
+    ax.set_ylabel("Supernova Fraction")
 
     handles, labels = ax.get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
