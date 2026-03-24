@@ -105,10 +105,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     num = len(snaps)
     prows = math.ceil(num / pcols)
     fig, axes = plt.subplots(prows, pcols, figsize=(8, 7*prows))
-    fig_bin, axes_bin = plt.subplots(prows, pcols, figsize=(8, 7*prows))
-
     axes = axes.flatten() if num > 1 else [axes]
-    axes_bin = axes_bin.flatten() if num > 1 else [axes_bin]
 
     ratio_data = {}
 
@@ -119,76 +116,92 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
         sub_data = {}
         sub_data['Redshift'] = round(z,2)
         for idx, sn in enumerate(sn_type):
-            # convert ratio to fraction
-            ratio = df[f"snr_{sn}_ratio"] * 100
+            ratio = df[f"snr_{sn}_ratio"]
             mass = df["mass"]
-            axes[i].scatter(mass, ratio, label=sn, color=colors[idx], marker='.', zorder=1)
+            axes[i].scatter(mass, ratio, label=sn, color=colors[idx], marker='.')
 
             # calcaulate an average ratio for each sn type at each redshift
-            sub_data[sn] = round(np.mean(ratio), 2)
+            sub_data[sn] = round(np.mean(ratio) * 100, 2)
             # # standard error of the mean  -> (standard deviation (sample std, N-1))
             std_dev = np.std(ratio, ddof=1)  # ddof=1 gives sample std
             std_error = std_dev / np.sqrt(len(ratio))
-            sub_data[f'{sn}_err'] = round(std_error, 2)
+            sub_data[f'{sn}_err'] = round(std_error * 100, 2)
 
-            # set up bins
+            # binnage
             n_bins = 50
             m_min = df["mass"].min()
             m_max = df["mass"].max()
             bins = np.logspace(np.log10(m_min), np.log10(m_max), n_bins)
             df["mass_bin"] = pd.cut(df["mass"], bins=bins)
-
-            # average binned values
-            binned_avg = df.groupby("mass_bin")[f"snr_{sn}_ratio"].mean() * 100
+            binned_avg = df.groupby("mass_bin")[f"snr_{sn}_ratio"].mean()
             bin_centers = [interval.mid for interval in binned_avg.index]
             avg_ratio = binned_avg.values
-
-            # error in bins 
-            std_dev_bin = np.std(avg_ratio, ddof=1)  # ddof=1 gives sample std
-            std_error_bin = std_dev_bin / np.sqrt(len(avg_ratio))
-
-            #axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black')
-            axes_bin[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black')
-
-            axes[i].errorbar(bin_centers, avg_ratio, yerr=std_error_bin, color='black', fmt='D', capsize=5, zorder=10)
-            axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
+            axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors1[idx], marker='D', edgecolors='black')
 
             # Take log of x
             x_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
             model = LinearRegression()
             model.fit(x_log, avg_ratio)
             y_pred = model.predict(x_log)
-            axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
-            axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
-            
-            axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
-            axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
+            axes[i].plot(bin_centers, y_pred, color=colors1[idx])  
 
         ratio_data[s] = sub_data
-        axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]')
-        axes[i].set_ylabel("Supernova Fraction [%]")
+        axes[i].set_ylabel("ratio")
+        axes[i].set_xlabel("mass")
         axes[i].set_xscale('log')
         axes[i].set_title(f"Redshift={z:.2f}")
 
-        axes_bin[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]')
-        axes_bin[i].set_ylabel("Supernova Fraction [%]")
-        axes_bin[i].set_xscale('log')
-        axes_bin[i].set_title(f"Redshift={z:.2f}")
-
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig.tight_layout(rect=[0, 0.1, 1, 1])
-    fig.savefig(f"Data/Images/TNG/ratio/mass/all/{png_name}", dpi=300)
-    plt.close(fig)
-
-    handles, labels = axes_bin[0].get_legend_handles_labels()
-    fig_bin.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig_bin.tight_layout(rect=[0, 0.1, 1, 1])
-    fig_bin.savefig(f"Data/Images/TNG/ratio/mass/reduced/b{png_name}", dpi=300)
-    plt.close(fig_bin)
-
+    fig.tight_layout(rect=[0, 0.05, 1, 1])
+    fig.savefig(f"Data/Images/TNG/ratio/mass/{png_name}", dpi=300)
     
     return fig, ratio_data
+
+def animate_seperate(snaps, save_gif=False, gif_name="animation_seperate.gif"):
+    dfs = ratio_calc()  # your function
+    num = len(snaps)
+
+    fig, ax = plt.subplots(2, 2, figsize=(10, 8))
+    ax = ax.flatten()
+
+    # Precompute scatter data for all snapshots
+    scatter_data = []
+    for s in snaps:
+        df = dfs[s]
+        snapshot_scatter = []
+        for idx, sn in enumerate(sn_type):
+            curr = f"snr_{sn}_ratio"
+            ratio = df[curr]
+            mass = df["mass"]
+            z = df["z"].iloc[0]
+            snapshot_scatter.append((mass, ratio, sn, colors[idx], z))
+        scatter_data.append(snapshot_scatter)
+
+    # Initialize plots
+    for a in ax:
+        a.clear()
+
+    def update(frame):
+        # Clear all axes
+        for a in ax:
+            a.clear()
+
+        sdata = scatter_data[frame]
+        for i, (mass, ratio, sn, color, z) in enumerate(sdata):
+            ax[i].scatter(mass, ratio, label=sn, color=color, marker='.')
+            ax[i].set_ylabel("ratio")
+            ax[i].set_xlabel("mass")
+            ax[i].set_xscale('log')
+            ax[i].set_title(f"Redshift={z:.2f}")
+        fig.suptitle(f"Snapshot {frame + 1}/{num}")
+
+    ani = FuncAnimation(fig, update, frames=num, interval=1000, repeat=True)
+    handles, labels = ax[1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    fig.tight_layout()  # leave space for legend
+    ani.save(gif_name, writer=PillowWriter(fps=1))  # fps=1 → 1 frame per second
+    return ani
 
 def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
     dfs = ratio_calc()  # your function returning a dict of DataFrames
@@ -241,8 +254,8 @@ def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
             ax.plot(binc, av, label=sn, color=color)
         
         ax.set_xscale('log')
-        ax.set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}}$]')
-        ax.set_ylabel("Supernova Fraction [%]")
+        ax.set_xlabel("mass")
+        ax.set_ylabel("ratio")
         ax.set_title(f"Redshift={z:.2f} (Snapshot {frame+1}/{len(snaps)})")
         ax.legend(loc='upper right')
 
@@ -253,10 +266,72 @@ def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
 
     return ani
 
+def mass_bins(data):  
+    # group all data
+    dfs = []
+    for s in data.keys():
+        df = data[s].copy()
+        dfs.append(df)
+    df_all = pd.concat(dfs, ignore_index=True)
+
+    # define bins
+    n_bins = 10
+    m_min = df_all["mass"].min()
+    m_max = df_all["mass"].max()
+    bins = np.logspace(np.log10(m_min), np.log10(m_max), n_bins + 1)
+    print('here', bins)
+    df_all["mass_bin"] = pd.cut(df_all["mass"], bins=bins)
+
+    # grouped tables
+    grouped_tables = {
+        mass_bin: group.sort_values("z")
+        for mass_bin, group in df_all.groupby("mass_bin")
+    }
+
+    for mass_bin, table in grouped_tables.items():
+        fig, ax = plt.subplots(figsize=(8, 7))
+        for idx, sn in enumerate(sn_type):
+            ratio = table[f"snr_{sn}_ratio"]
+            z = table["z"]
+            zset = set(z)
+            print('now', zset)
+
+            ax.scatter(z, ratio, label=sn, color=colors[idx], marker='.')
+
+            mantissa_left, exponent_left = f"{mass_bin.left:.0e}".split("e")
+            label_left = rf"${mantissa_left}\times 10^{{{int(exponent_left)}}}$"
+
+            mantissa_right, exponent_right = f"{mass_bin.right:.0e}".split("e")
+            label_right = rf"${mantissa_right}\times 10^{{{int(exponent_right)}}}$"
+
+            zs = []
+            avs = []
+            for z1 in sorted(zset):  
+                fdf = table[table['z'] == z1]  
+                avs.append(np.mean(fdf[f"snr_{sn}_ratio"]))
+                zs.append(z1)
+            ax.plot(zs, avs, label=f'av_{sn}', color=colors1[idx])
+            ax.set_title(f"Mass: {label_left} -> {label_right}")
+            ax.set_ylabel('Supernova Fraction')
+            ax.set_xlabel('Redshift')
+            ax.legend()
+
+
+        #fig.savefig(f"Data/Images/TNG/ratio/redshift/m{mass_bin.left}.png", dpi=300)
+
+    combined_base = os.path.join(base, 'Data/TNG/Combined')
+    df_all.to_csv(combined_base + f"/dummyall.csv")
+    return 0
+
+def run_mass():
+    dfs = ratio_calc()
+    dfs_mass = mass_bins(dfs)
+    return 0
+
 def run_redshift():
     all_rows = []
     for s in snapshots:
-        sfig, data = redshift_bins(s, png_name=f"s{s}_ratio.png")
+        sfig, data = redshift_bins(s, png_name=f"ratio_s{s}.png")
         df = pd.DataFrame.from_dict(data, orient='index')
         df.index.name = 'Snapshot'
         df.reset_index(inplace=True)
@@ -280,22 +355,16 @@ def run_cosmic():
         z = df["Redshift"]
         ratio = df[f'{sn}']
         err = df[f'{sn}_err']
-        ax.plot(z, ratio, color=colors[idx], label=f'{sn}')
-        ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=10)
-        ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
+        ax.errorbar(z, ratio, yerr=err, color=colors[idx], label=f'{sn}')
         ax.plot(z, ratio, color=colors1[idx])
-        ax.set_xlabel("Redshift")
-        ax.set_ylabel("Supernova Fraction")
 
-    handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig.tight_layout(rect=[0, 0.1, 1, 1])
-    fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic.png", dpi=300)
+    fig.savefig(f"Data/Images/TNG/ratio/cosmic.png", dpi=300)
     return 0
 
 run_redshift()
+#run_mass() # No not you
 run_cosmic()
-#animate_plotter(snapshots, True)
+animate_plotter(snapshots, True)
 
 
 """
