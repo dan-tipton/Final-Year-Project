@@ -30,12 +30,17 @@ myAnalysis = Analysis(8, 25, 80, 0.7)
 
 # intialise dictionary using keys 
 keys = ['salpeter', 'kroupa', 'chabrier', 'chabrierSystem', 'char01', 'char1', 'char10', 'char100', 'charAlpha135', 'charAlpha335']
+keys = ['Salpeter (1955)', 'Kroupa (2001)', 'Chabrier (2003)', 'Chabrier-System (2003)', 
+        r'$\mathrm{m_c}$ = 0.1 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 10 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 100 $\mathrm{M_\odot}$', 
+        r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$, $\mathrm{\alpha}$ = -1.35', r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$, $\mathrm{\alpha}$ = -3.35']
 imfDict = {key: [] for key in keys}
 
 # region Integrals
 # use partial to give parameters without specifying mass
 functions = [
-    myIMF.salpeter, myIMF.kroupa, myIMF.chabrier, myIMF.chabrierSystem, 
+    myIMF.salpeter,
+    #myIMF.salpeter_reduced, 
+    myIMF.kroupa, myIMF.chabrier, myIMF.chabrierSystem, 
     partial(myIMF.characteristic, mc=0.1, alpha=-2.35), partial(myIMF.characteristic, mc=1, alpha=-2.35), 
     partial(myIMF.characteristic, mc=10, alpha=-2.35), partial(myIMF.characteristic, mc=100, alpha=-2.35), 
     partial(myIMF.characteristic,mc=1, alpha=-1.35), partial(myIMF.characteristic, mc=1, alpha=-3.35)
@@ -51,6 +56,7 @@ for idx, func in enumerate(functions):
     # for a given mass of a star forming region get normalisation constant
     # normalisation constant such that the integral over the mass range is equal to mass of star forming region
     norms[keys[idx]] = myStarMass.massRegion / integral
+    print(func, myStarMass.massRegion / integral)
 
 
 # region IMF
@@ -60,8 +66,8 @@ massList = myStarMass.generateListSolarMasses()
 
 for idx, func in enumerate(functions):
     for mass in massList:
-        #imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
-        imfDict[keys[idx]].append(func(mass))
+        imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
+        #imfDict[keys[idx]].append(func(mass))
 
 """
 # Old code for getting plot data 
@@ -227,26 +233,34 @@ for file_name in my_glob:
     # wont all regions have some massive stars ]
     # no different to what was done previously?????
 """
-
+print(imfDict.keys())
 # region Plot
+fig, ax = plt.subplots(figsize=(8, 7))
 for key, values in imfDict.items():
     label = key
     linestyle = 'solid'
-    if 'char' in key:
-        label = f'm*c = {key}M☉'
+    #if 'char' in key:
+    if r'$\mathrm{m_c}$' in key:
+        #label = f'm*c = {key}M☉'
         linestyle = '--'
-    if 'Alpha' in key:
-        label = f'Alpha = -{key}'
+    #if 'Alpha' in key:
+    if r'$\mathrm{\alpha}$' in key:
+        #label = f'Alpha = -{key}'
         linestyle = 'dotted'
-    plt.plot(massList, values, label=key, marker=None, linestyle=linestyle)
+    ax.plot(massList, values, label=key, marker=None, linestyle=linestyle)
 
-plt.xlabel("Log (Mass [M☉])")
-plt.ylabel("Log (ξ(m)Δm)")
-plt.title(f"Initial Mass Functions (IMF), normalised to {myStarMass.massRegion:.1e} solar masses")
+ax.set_xlabel("Log (Mass [M☉])")
+ax.set_ylabel("Log (ξ(m)Δm)")
+#ax.set_title(r"Initial Mass Functions (IMF), Normalised to $\mathrm{10^{6}}$ $\mathrm{M_\odot}$")
+#ax.set_title(f"Initial Mass Functions (IMF)")
 #plt.title(f"Initial Mass Functions (IMF)")
-plt.xscale('log')
-plt.yscale('log')
-plt.ylim(10**-2,10**9)
-plt.legend()
-plt.show()
+ax.set_xscale('log')
+ax.set_yscale('log')
+ax.set_ylim(10**-2,10**9)
+#ax.set_ylim(10**-7,10**4)
+handles, labels = ax.get_legend_handles_labels()
+fig.legend(handles, labels, loc="lower center", ncol=3)
+fig.tight_layout(rect=[0, 0.15, 1, 1])
+fig.savefig("Final/Images/IMF_highres_norm.png", dpi=300)
+fig.show()
 

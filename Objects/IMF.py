@@ -1,6 +1,8 @@
 
 # Formula to generate arrays
 
+#https://academic.oup.com/mnras/article/429/2/1725/1048250
+
 # Imports
 import numpy as np
 
@@ -19,6 +21,13 @@ class IMF:
         salpeterConstant = 0.03
         powerLaw = pow(m, -2.35)
         salpeter = salpeterConstant * powerLaw
+        return salpeter
+    
+    def salpeter_reduced(self, m):
+        self.name = "Salpeter_reduced"
+        # mass in solar masses
+        powerLaw = pow(m, -2.35)
+        salpeter = powerLaw
         return salpeter
     
     def kroupa(self, m):
@@ -71,6 +80,6 @@ class IMF:
         part1 = pow(m, alpha)
         exponent = -mc/m
         part2 = np.exp(exponent)
-        Chararcteristic = part1 * part2
+        Chararcteristic = 1/self.A * part1 * part2
         
         return Chararcteristic
