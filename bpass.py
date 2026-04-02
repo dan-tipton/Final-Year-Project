@@ -68,7 +68,7 @@ if mode == -1:
                 agePlot = bpassPlotter.agePlots(imf, mtl, sinbin, False)
                 agePlot.title(f"Age/SN Rate: {sinbin}-imf{imf}.z{mtl}")
                 ageSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Age", f"imf{imf}_{sinbin}_z{mtl}_age.png")
-                agePlot.savefig(ageSavePath)
+                agePlot.savefig(ageSavePath, dpi=300)
                 agePlot.close()
                 plt.close()
 
@@ -282,7 +282,7 @@ elif mode == 3:
 
         #inputMtl = 0.02
         #inputAge = 7.4
-        sn_rate_data = bpassAnalysis.generateSupernovaRate(1, "_chab100", "bin", inputMtl, inputAge, 1)
+        sn_rate_data = bpassAnalysis.generateSupernovaRate(0, "_chab100", "bin", inputMtl, inputAge, 1)
         sn_rate_data['x'] = row['x']
         sn_rate_data['y'] = row['y']
         sn_rate_data['Redshift'] = row['redshift']

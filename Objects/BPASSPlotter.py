@@ -194,7 +194,7 @@ class BPASSPlotter():
                     currdf = subterm.data
                     if subterm.sinbin == sinbin and subterm.mtl == mtl:
                         x = currdf['Log(age/yrs)']
-                        myPlot = PlotHelper("-", "Age", "SN Rate")
+                        myPlot = PlotHelper("-", "Age [log(yrs)]", "Supernova Number")
                         if dashed: 
                             myPlot = PlotHelper("--", "Age", "SN Rate")
                         agePlot = myPlot.makePlot(
