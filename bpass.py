@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 0
+mode = -1
 
 # region Imports
 import pandas as pd
@@ -76,7 +76,7 @@ if mode == -1:
                 ionPlot = bpassPlotter.ionPlots(imf, mtl, sinbin, False)
                 ionPlot.title(f"Photon Rate/SN Rate: {sinbin}-imf{imf}.z{mtl}")
                 ionSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Ion", f"imf{imf}_{sinbin}_z{mtl}_ion.png")
-                ionPlot.savefig(ionSavePath)
+                ionPlot.savefig(ionSavePath, dpi=300)
                 ionPlot.close()
                 plt.close()
 
@@ -86,8 +86,8 @@ if mode == -1:
             mtlPlot = bpassPlotter2.metalPlots(imf, sinbin, norm=False, dashed=False, ax1=ax1, ax2=ax2)
             mtlPOLYSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Mtl", "POLY",f"imf{imf}_{sinbin}_mtl.png")
             mtlRAWSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Mtl", "RAW",f"imf{imf}_{sinbin}_mtl.png")
-            fig1.savefig(mtlPOLYSavePath)
-            fig2.savefig(mtlRAWSavePath)
+            fig1.savefig(mtlPOLYSavePath, dpi=300)
+            fig2.savefig(mtlRAWSavePath, dpi=300)
             plt.close(fig1)
             plt.close(fig2) 
             mtlPlot.close()

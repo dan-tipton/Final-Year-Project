@@ -219,7 +219,7 @@ class BPASSPlotter():
         for data in self.combinedSupernovaIonArray:
             if data.sinbin == sinbin and data.imf == imf and data.mtl == mtl:
                 df = data.data
-                myPlot = PlotHelper("-", "Photon rate", "SN Rate")
+                myPlot = PlotHelper("-", "Photon rate", "Supernova Number")
                 if dashed: 
                     myPlot = PlotHelper("--", "Photon rate", "SN Rate")
                 ionPlot = myPlot.makePlot(
