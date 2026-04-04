@@ -16,6 +16,7 @@ from Objects.IMF import IMF
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
+from scipy import stats
 from scipy import integrate
 from scipy.stats import gaussian_kde
 from scipy.interpolate import make_interp_spline
@@ -315,7 +316,7 @@ def halo_level(snaps):
     fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
     fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
     fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
-    fig_mass, ax_mass = plt_helper(8, 7, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.15)
+    fig_mass, ax_mass = plt_helper(8, 7, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.17)
 
     all_snrd = []
     all_sfrd = []
@@ -413,6 +414,7 @@ def halo_level(snaps):
     plt_labels(fig_halo_density, ax_hrd, 4)
     plt_labels(fig_dense, ax_dense, 2)
     plt_labels(fig_av, ax_av, 2)
+    plt_labels(fig_mass, ax_mass, 4)
 
     return True
 
@@ -511,6 +513,7 @@ def cosmic_level(snaps, kcc_type):
     kcc_chabrier = supernova_efficiency(imf.chabrier, kcc_type)
     kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
 
+    print('sn type', kcc_type, kcc_chabrier)
     csnrh_salpeter = csfrh * kcc_salpeter
     csnrh_chabrier = csfrh * kcc_chabrier
     csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
@@ -556,7 +559,7 @@ def cosmic_level(snaps, kcc_type):
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
     #return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
-    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all
+    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000
 
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
@@ -597,7 +600,7 @@ for i, sn_type in enumerate(all_sn_types):
         kcc_type = None
 
     halo_level(snapshots)
-    snrd, sfrh, snrd_md14, sfrh_md14, sfrh_halos = cosmic_level(snapshots, kcc_type)
+    snrd, sfrh, snrd_md14, sfrh_md14, sfrh_halos, sfrh_1000 = cosmic_level(snapshots, kcc_type)
 
     if len(total_sfr) == 0:
         total_sfr = sfrh
@@ -620,17 +623,18 @@ for i, sn_type in enumerate(all_sn_types):
     test_dict[sn_type] = [sfrh, snrd]
 
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
-plt_labels(fig_types1, ax_types1, 2)
+plt_labels(fig_types1, ax_types1, 3)
 
-ax_total_sfr.plot(rev_redshifts, total_sfr, label=f'TNG100-1', color='orange')
-ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'MD14', color='navy')
-ax_total_sfr.plot(rev_redshifts, sfrh_halos, label=f'Group Catalog', color='lime')
+ax_total_sfr.plot(rev_redshifts, total_sfr, label=f'Current Study (Prediction From SNRD)', color='orange')
+ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy')
+ax_total_sfr.plot(rev_redshifts, sfrh_halos, label=f'TNG100-1 (All Halos)', color='lime')
+ax_total_sfr.plot(rev_redshifts, sfrh_1000, label=f'TNG100-1 (Top 1000 Halos)', color='teal')
 plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.1)
 
 kcc = supernova_efficiency(imf.chabrier)
-ax_total_snr.plot(rev_redshifts, total_snr, label=f'TNG100-1', color='orange')
-ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'MD14', color='navy')
-#ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Group Catalog', color='lime')
+ax_total_snr.plot(rev_redshifts, total_snr, label=f'Current Study', color='orange')
+ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='navy')
+ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Prediction from TNG100-1 SFRD (All Halo)', color='lime')
 plt_labels(fig_total_snr, ax_total_snr, 2, 0.07)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
@@ -640,21 +644,54 @@ fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
 plt.close(fig_total_sfr)
 plt.close(fig_total_snr)
 
-fig_ratio, ax_ratio = plt_helper(8, 7, "Redshift (z)",  r'Supernova Fraction', logx=False, logy=False, legendspace=0.2)
+def myfunc(x):
+  return slope * x + intercept
+
+fig_ratio, ax_ratio = plt_helper(8, 7, "Redshift (z)",  r'Supernova Fraction [%]', logx=False, logy=False, legendspace=0.2)
 ratios = []
 for idx, item in enumerate(test_dict.items()):
     name = item[0]
     csfrh = item[1][0]
     csnrh = item[1][1]
 
-    sf_ratio = sum(csfrh/total_sfr)/len(csfrh)
-    sn_ratio = sum(csnrh/total_snr)/len(csnrh)
-    print(f'{name}: \n  SN:{sn_ratio*100:.1f}\n  SF: {sf_ratio*100:.1f}')
-    #print(sum(csnrh/total_snr), len(csnrh))
+    #sf_ratio = sum(csfrh/total_sfr)/len(csfrh)
+    #sn_ratio = sum(csnrh/total_snr)/len(csnrh)
+    #print(f'{name}: \n  SN:{sn_ratio*100:.1f}\n  SF: {sf_ratio*100:.1f}')
+
+    # calculate average across all redshifts
+    sf_values = csfrh / total_sfr
+    sn_values = csnrh / total_snr
+    sf_ratio = np.mean(sf_values)
+    sn_ratio = np.mean(sn_values)
+
+    # calculate error in average across all redhisfts
+    sf_err = np.std(sf_values, ddof=1) / np.sqrt(len(sf_values))
+    sn_err = np.std(sn_values, ddof=1) / np.sqrt(len(sn_values))
+
+    sn_err_1 = stats.sem(sn_values, axis=0, ddof=1)
+
+    print(f'{name}:')
+    print(f'  SN: {sn_ratio*100:.1f} ± {sn_err*100:.1f}, {sn_err_1*100:.1f}')
+    print(f'  SF: {sf_ratio*100:.1f} ± {sf_err*100:.1f}')
     ratios.append(sn_ratio)
 
-    ax_ratio.plot(rev_redshifts, csnrh/total_snr, color=sn_colours[idx], label=name)
+    # plot across redshifts with error bars found from standard error of mean
+    # THIS IS WRONG THERE IS NO ERROR DIVIDING BY EACH TYPE (current give 1 point for all)
+    #y = csnrh/total_snr
+    #std_dev = np.std(csnrh/total_snr, ddof=1)  # ddof=1 gives sample std
+    #std_error = std_dev / np.sqrt(len(csnrh/total_snr))
+    
+    # find line of best fit
+    y = csnrh/total_snr * 100
+    x = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
+    slope, intercept, r, p, std_err = stats.linregress(rev_redshifts, y)
+    mymodel = list(map(myfunc, x))
 
-plt_labels(fig_ratio, ax_ratio, 2, 0.07)
+    ax_ratio.plot(x, mymodel, color='black',  linewidth=2, zorder=20)
+    ax_ratio.plot(x, mymodel, color=sn_colours[idx], label=f"{name} lineregress", linewidth=1, zorder=30)
+    #ax_ratio.errorbar(rev_redshifts, y, yerr=std_error, color='black', fmt='D', capsize=5, zorder=30)
+    ax_ratio.scatter(rev_redshifts, y, label=name, color=sn_colours[idx], marker='D', edgecolors='black', zorder=40)
+
+plt_labels(fig_ratio, ax_ratio, 4, 0.07)
 fig_ratio.savefig("Data/Images/TNG/final/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))

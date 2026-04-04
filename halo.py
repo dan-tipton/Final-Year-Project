@@ -37,6 +37,7 @@ import matplotlib.pyplot as plt
 from functools import reduce
 from matplotlib.animation import FuncAnimation, PillowWriter
 from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error,mean_squared_error, root_mean_squared_error
 from scipy import stats
 
 base = os.getcwd()
@@ -96,6 +97,9 @@ def ratio_calc(save=None):
     
     return all
 
+def myfunc(x, slope, intercept):
+  return slope * x + intercept
+
 # plot and calculate avergae
 def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     dfs = ratio_calc()
@@ -117,6 +121,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     for i, s in enumerate(snaps):
         df = dfs[s]
         z = df["z"].iloc[0]
+        print(z)
 
         sub_data = {}
         sub_data['Redshift'] = round(z,2)
@@ -156,11 +161,15 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
             # linear regress
             z_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
-            #slope, intercept, r, p, std_err = stats.linregress(z_log, avg_ratio)
+            slope, intercept, r, p, std_err = stats.linregress(z_log.ravel(), avg_ratio)
+            y_pred = myfunc(z_log, slope, intercept)
             #regress = linear(z_log, slope, intercept)
-            model = LinearRegression()
-            model.fit(z_log, avg_ratio)
-            y_pred = model.predict(z_log)
+            print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
+            
+            #model = LinearRegression()
+            #model.fit(z_log, avg_ratio)
+            #y_pred = model.predict(z_log)
+
             axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
             axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
             axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
@@ -287,12 +296,17 @@ def run_cosmic():
         slope, intercept, r, p, std_err = stats.linregress(z, ratio)
         regress = linear(z, slope, intercept)
 
-        ax.plot(z, ratio, color=colors[idx], label=f'{sn}')
-        ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=10)
-        ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
-        ax.plot(z, ratio, color=colors1[idx])
+        ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
+        ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
+        ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
+        ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
 
-        ax.plot(z, regress, color='black')
+        # calculate average across all redshifts
+        sn_ratio = np.mean(ratio)
+        # calculate error in average across all redhisfts
+        sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
+        print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
+
         
         
     ax.set_xlabel("Redshift")
