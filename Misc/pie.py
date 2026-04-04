@@ -1,21 +1,55 @@
 import matplotlib.pyplot as plt
 
-labels = ['IIP [± 0.4%]', 'II-Other [± 2.0%]', 'Ib [± 1.5%]', 'Ic [± 0.4%]']
-sizes = [43.9, 22.6, 22.7, 10.8]
-colors = ['#FF5733', '#33FF57', '#3357FF', "#FFD012"]
+labels1 = ['IIP', 'II-Other', 'Ib', 'Ic']
+sizes1 = [43.88, 22.63, 22.68, 10.81]
+errors1 = [0.44, 1.99, 1.52, 0.41]
 
-plt.pie(
-    sizes,
-    labels=labels,              # show labes
+labels2 = ['IIP', 'II-Other', 'Ib', 'Ic']
+sizes2 = [47.38, 25.06, 18.60, 9.95]
+errors2 = [0.86, 1.69, 1.66, 0.61]
+
+colors = ['#FF5733', '#33FF57', "#4C6CFD", "#FFD012"]
+# Create figure with 1 row, 2 columns
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+# Helper function for inside labels
+def make_autopct(labels, errors):
+    def inner(pct):
+        idx = make_autopct.idx
+        result = f"{labels[idx]}\n{pct:.1f}±{errors[idx]}%"
+        make_autopct.idx += 1
+        return result
+    make_autopct.idx = 0
+    return inner   
+
+# First pie chart
+make_autopct.idx = 0
+axes[0].pie(
+    sizes1,
+    labels=None,
     colors=colors,
-    autopct='%1.1f%%',          # show percentages
+    autopct=make_autopct(labels1, errors1),
+    pctdistance=0.6,              # distance of label from center
     startangle=90,
-    wedgeprops={
-        'edgecolor': 'black',   # outline color
-        'linewidth': 2          # outline thickness
-    }
+    wedgeprops={'edgecolor':'black', 'linewidth':2},
+    textprops={'color':'white', 'weight':'bold'}  # <-- white text
 )
+axes[0].set_title("A)")
+axes[0].axis('equal')
 
-plt.axis('equal')  # keeps it circular
-#plt.title("Supernova Fractions Across All Redshifts")
+# Second pie chart
+make_autopct.idx = 0
+axes[1].pie(
+    sizes2,
+    labels=None,
+    colors=colors,
+    autopct=make_autopct(labels2, errors2),
+    pctdistance=0.6,              # distance of label from center
+    startangle=90,
+    wedgeprops={'edgecolor':'black', 'linewidth':2},
+    textprops={'color':'white', 'weight':'bold'}  # <-- white text
+)
+axes[1].set_title("B)")
+axes[1].axis('equal')
+
 plt.show()

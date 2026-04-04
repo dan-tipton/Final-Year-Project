@@ -671,8 +671,8 @@ for idx, item in enumerate(test_dict.items()):
     sn_err_1 = stats.sem(sn_values, axis=0, ddof=1)
 
     print(f'{name}:')
-    print(f'  SN: {sn_ratio*100:.1f} ± {sn_err*100:.1f}, {sn_err_1*100:.1f}')
-    print(f'  SF: {sf_ratio*100:.1f} ± {sf_err*100:.1f}')
+    print(f'  SN: {sn_ratio*100:.2f} ± {sn_err*100:.2f}, {sn_err_1*100:.2f}')
+    print(f'  SF: {sf_ratio*100:.2f} ± {sf_err*100:.2f}')
     ratios.append(sn_ratio)
 
     # plot across redshifts with error bars found from standard error of mean
