@@ -675,20 +675,41 @@ curve_snr = curve_md14(rev_redshifts, total_snr, 3)
 
 # apply a generic kcc scaling the star formation predictions
 # there is no supernova types depdenance so cannot dynamically change it 
-kcc = (supernova_efficiency(imf.chabrier, 20) + supernova_efficiency(imf.chabrier, 25) + supernova_efficiency(imf.chabrier, 10))/3
-print('scaling;', kcc)
+kcc_IIP = supernova_efficiency(imf.chabrier, 20)
+kcc_II_Other = supernova_efficiency(imf.chabrier, 25)
+kcc_Ibc = supernova_efficiency(imf.chabrier, 10)
+
+# averaged
+kcc_avg = (kcc_IIP + kcc_II_Other + kcc_Ibc)/3
+
+# with fraction scaling
+kcc_1 = ((0.4388 * kcc_IIP) + (0.2263 * kcc_II_Other) + ((0.2268 + 0.1081)* kcc_Ibc))
+kcc_1_lower = (((0.4388 + 0.044)* kcc_IIP) + ((0.2263 + 0.0199) * kcc_II_Other) + ((0.2268 + 0.0152 + 0.1081 + 0.041)* kcc_Ibc)) /(0.4388 + 0.044 + 0.2263 + 0.0199 + 0.2268 + 0.0152 + 0.1081 + 0.041)
+kcc_1_upper = (((0.4388 - 0.044)* kcc_IIP) + ((0.2263 - 0.0199) * kcc_II_Other) + (((0.2268 - 0.0152) + (0.1081 - 0.041))* kcc_Ibc)) /((0.4388 - 0.044) + (0.2263 - 0.0199) + (0.2268 - 0.0152) + (0.1081 - 0.041))
+# from halo fractions
+#kcc_2 = ((0.469 * kcc_IIP) + (0.248 * kcc_II_Other) + ((0.184 + 0.099)*kcc_Ibc))
+
+print('scaling avg;', kcc_avg)
+print('scaling 1;', kcc_1)
+print('scaling upper;', kcc_1_upper)
+print('scaling lower;', kcc_1_lower)
+
 
 # prep predictions again (could move them out of func)
 # remake md14 as we do not want to use snrd_md14_ from above as this will have kcc corrosponding to Ic supernova (high mass)
 # this will be smaller than the averaged prediction from above 
-snrd_md14 = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * kcc
-snrd_mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2)) * kcc
-snrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7)) * kcc
+snrd_md14 = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * kcc_1
+snrd_mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2)) * kcc_1
+
+snrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))
 
 # plot lines
-ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
-ax_total_snr.plot(redshift_linespace, snrd_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
-ax_total_snr.plot(redshift_linespace, snrd_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='cyan', ls='--')
+#ax_total_snr.plot(redshift_linespace, snrd_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_avg, label=f'Neijssel et. al (2019) [kcc={kcc_avg:.4f}]', color='purple', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1, label=f'Neijssel et. al (2019) [kcc={kcc_1:.4f}]', color='blue', ls='--')
+#ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1_upper, label=f'Neijssel et. al (2019) [kcc={kcc_1_upper:.4f}]', color='navy', ls='--')
+#ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1_lower, label=f'Neijssel et. al (2019) [kcc={kcc_1_lower:.4f}]', color='cyan', ls='--')
 ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Curve Fit - Current Study', color='orange')
 #ax_total_snr.plot(redshift_linespace, curve_all * kcc, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
 
@@ -696,12 +717,29 @@ ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Curve Fit - Current Stu
 ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black')
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
+# plot data points
+#ax_total_snr.axhline(0.447e-4, color='black', ls='--', label='0.447e-4')
+#ax_total_snr.axhline(0.258e-4, color='black', ls='--', label='0.258e-4')
+ax_total_snr.errorbar(0, 0.258e-4+0.447e-4, yerr=0.072e-4+0.139e-4, capsize=5, color='red', label='Li et al. (2011)', fmt='o')
+ax_total_snr.errorbar(0, 1.5e-4, yerr=[[0.3e-4], [0.4e-4]], capsize=5, color='brown', label='Mattila et al. (2012)', fmt='o')
+ax_total_snr.errorbar(0.072, 1.06e-4, yerr=[[0.19e-4], [0.19e-4]], xerr=[[0.009], [0.009]], capsize=5, color='hotpink', label='Taylor et al. (2014)', fmt='o')
+ax_total_snr.errorbar(0, 0.48e-4, yerr=[[0.23e-4], [0.23e-4]], capsize=5, color='gold', label='Cappellaro et al. (1999)', fmt='o')
+ax_total_snr.errorbar(0.26, 2.2e-4, yerr=[[0.7e-4], [0.8e-4]], capsize=5, color='greenyellow', label='Cappellaro et al. (2005)', fmt='o')
+ax_total_snr.errorbar(0.39, 3.29e-4, yerr=[[1.78e-4], [3.08e-4]], capsize=5, color='pink', label='Melinder et al. (2012)', fmt='o') # using statistical errors
+ax_total_snr.errorbar(0.73, 6.40e-4, yerr=[[3.12e-4], [5.30e-4]], capsize=5, color='pink', label='Melinder et al. (2012)', fmt='o')
+
+ax_total_snr.errorbar(0.39, 3e-4, yerr=[[0.94e-4], [1.28e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+ax_total_snr.errorbar(0.73, 7.39e-4, yerr=[[1.52e-4], [1.86e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+ax_total_snr.errorbar(1.11, 9.57e-4, yerr=[[2.80e-4], [3.76e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+
 # set legend and axes
 ax_total_snr.set_yscale('linear')
+ax_total_snr.set_ylim(-5e-5, 12e-4)
+ax_total_snr.set_xlim(right=5)
 ax_total_snr.yaxis.set_major_formatter(
     ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}')
 )
-plt_labels(fig_total_snr, ax_total_snr, 2, 0.17)
+plt_labels(fig_total_snr, ax_total_snr, 3, 0.17)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
 fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
