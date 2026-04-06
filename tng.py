@@ -26,6 +26,8 @@ from astropy.cosmology import z_at_value
 from scipy.interpolate import interp1d
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.colors import LogNorm
+from scipy.interpolate import make_interp_spline
+import matplotlib.ticker as ticker
 
 from matplotlib import cm
 from matplotlib.colors import Normalize 
@@ -214,9 +216,15 @@ def sfrd_func(z, a, b, c, d):
     return sfrd
 
 # curve fit values to MD2014
-def curve_md14(redshifts, array):
-    # Initial guess use the value isn madau and dickinson 
-    p0 = [0.015, 2.7, 2.9, 5.6]
+def curve_md14(redshifts, array, guess=1):
+    # Initial guess use md14, mf17 or nv19
+    if guess == 1:
+        p0 = [0.015, 2.7, 2.9, 5.6]
+    elif guess == 2:
+        p0 = [0.01, 2.6, 3.2, 6.2]
+    elif guess == 3:
+        p0 = [0.01, 2.77, 2.9, 4.7]
+
     params, cov = curve_fit(sfrd_func, redshifts, array, p0=p0)
     #print('params', params)
     x_linespace = np.linspace(redshifts.min(), redshifts.max(), 300)
@@ -456,6 +464,10 @@ def supernova_efficiency(_imf, sn_type=20):
     elif sn_type == 10:
         # 25 to 100 solar mass for type 1b/c
         numerator, _ = integrate.quad(_imf, 22, 100)
+    elif sn_type == 5:
+        # approximation for star formation conversion 
+        # 8 to 100 solar masses (include all regions)
+        numerator, _ = integrate.quad(_imf, 8, 100)
 
     return numerator/denominator
 
@@ -494,6 +506,8 @@ def cosmic_level(snaps, kcc_type):
     # convert from comoving to physical by multiplying by (1+z)^3
     redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
     csfrh = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) #* 1e9 #* pow((1 + redshift_linespace),3)
+    mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2))
+    nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))  
 
     # snrd curve fits
     md14_snrd_scaled = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
@@ -509,14 +523,14 @@ def cosmic_level(snaps, kcc_type):
     # formula is integral imf / integral mass * imf 
     # kcc given in Mo-1 
 
-    kcc_salpeter = supernova_efficiency(imf.salpeter, kcc_type)
     kcc_chabrier = supernova_efficiency(imf.chabrier, kcc_type)
-    kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
+    #kcc_salpeter = supernova_efficiency(imf.salpeter, kcc_type)
+    #kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
 
-    print('sn type', kcc_type, kcc_chabrier)
-    csnrh_salpeter = csfrh * kcc_salpeter
+    print(' CCSN', kcc_type, kcc_chabrier)
     csnrh_chabrier = csfrh * kcc_chabrier
-    csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
+    #csnrh_salpeter = csfrh * kcc_salpeter
+    #csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
 
     # trace sfrd using snrd 
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
@@ -559,8 +573,10 @@ def cosmic_level(snaps, kcc_type):
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
     #return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
-    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000
+    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000, mf17, nv19
 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+# region Build
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
 
 build = False
@@ -572,13 +588,15 @@ if build == True:
         for f in tqdm(as_completed(futures), total=len(futures)):
             results.append(f.result())
 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region Graphs
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
 fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
-fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.2)
-fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3)
+fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 
@@ -599,9 +617,11 @@ for i, sn_type in enumerate(all_sn_types):
     else:
         kcc_type = None
 
+    # call functions to get rates
     halo_level(snapshots)
-    snrd, sfrh, snrd_md14, sfrh_md14, sfrh_halos, sfrh_1000 = cosmic_level(snapshots, kcc_type)
+    snrd, sfrh, snrd_md14_, sfrh_md14, sfrh_halos, sfrh_1000, sfrh_mf17, sfrh_nv19 = cosmic_level(snapshots, kcc_type)
 
+    # sum the sf and sn rates to get a total
     if len(total_sfr) == 0:
         total_sfr = sfrh
     else:
@@ -625,17 +645,63 @@ for i, sn_type in enumerate(all_sn_types):
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
 plt_labels(fig_types1, ax_types1, 3)
 
-ax_total_sfr.plot(rev_redshifts, total_sfr, label=f'Current Study (Prediction From SNRD)', color='orange')
-ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy')
-ax_total_sfr.plot(rev_redshifts, sfrh_halos, label=f'TNG100-1 (All Halos)', color='lime')
-ax_total_sfr.plot(rev_redshifts, sfrh_1000, label=f'TNG100-1 (Top 1000 Halos)', color='teal')
-plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.1)
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region STAR Formation graph
+# curve fit - guess using nv19 (closest to our values)
+curve_sfr = curve_md14(rev_redshifts, total_sfr, 3)
+curve_all = curve_md14(rev_redshifts, sfrh_halos, 3)
+curve_100 = curve_md14(rev_redshifts, sfrh_1000, 3)
 
-kcc = supernova_efficiency(imf.chabrier)
-ax_total_snr.plot(rev_redshifts, total_snr, label=f'Current Study', color='orange')
-ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='navy')
-ax_total_snr.plot(rev_redshifts, sfrh_halos * kcc, label=f'Prediction from TNG100-1 SFRD (All Halo)', color='lime')
-plt_labels(fig_total_snr, ax_total_snr, 2, 0.07)
+# plot lines
+ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
+ax_total_sfr.plot(redshift_linespace, sfrh_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
+ax_total_sfr.plot(redshift_linespace, sfrh_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
+ax_total_sfr.plot(redshift_linespace, curve_sfr, label=f'Curve Fit - Current Study (Prediction From SNRD)', color='orange')
+ax_total_sfr.plot(redshift_linespace, curve_all, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
+ax_total_sfr.plot(redshift_linespace, curve_100, label=f'Curve Fit - TNG100-1 (Top 1000 Halos)', color='forestgreen')
+
+# scatter
+ax_total_sfr.scatter(rev_redshifts, total_sfr, label=f'Current Study (Prediction From SNRD)', color='orange', marker='D', edgecolors='black')
+ax_total_sfr.scatter(rev_redshifts, sfrh_halos, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
+ax_total_sfr.scatter(rev_redshifts, sfrh_1000, label=f'TNG100-1 (Top 1000 Halos)', color='forestgreen', marker='D', edgecolors='black')
+
+plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.17)
+ax_total_sfr.set_yscale('linear')
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region Supernova rate graph
+# curve fit the scatter data 
+curve_snr = curve_md14(rev_redshifts, total_snr, 3)
+
+# apply a generic kcc scaling the star formation predictions
+# there is no supernova types depdenance so cannot dynamically change it 
+kcc = (supernova_efficiency(imf.chabrier, 20) + supernova_efficiency(imf.chabrier, 25) + supernova_efficiency(imf.chabrier, 10))/3
+print('scaling;', kcc)
+
+# prep predictions again (could move them out of func)
+# remake md14 as we do not want to use snrd_md14_ from above as this will have kcc corrosponding to Ic supernova (high mass)
+# this will be smaller than the averaged prediction from above 
+snrd_md14 = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * kcc
+snrd_mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2)) * kcc
+snrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7)) * kcc
+
+# plot lines
+ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
+ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Curve Fit - Current Study', color='orange')
+#ax_total_snr.plot(redshift_linespace, curve_all * kcc, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
+
+# scatter
+ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black')
+#ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
+
+# set legend and axes
+ax_total_snr.set_yscale('linear')
+ax_total_snr.yaxis.set_major_formatter(
+    ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}')
+)
+plt_labels(fig_total_snr, ax_total_snr, 2, 0.17)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
 fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
@@ -644,6 +710,9 @@ fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
 plt.close(fig_total_sfr)
 plt.close(fig_total_snr)
 
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region Fractions
 def myfunc(x):
   return slope * x + intercept
 
