@@ -701,44 +701,73 @@ print('scaling lower;', kcc_1_lower)
 snrd_md14 = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * kcc_1
 snrd_mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2)) * kcc_1
 
-snrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))
+sfrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))
 
 # plot lines
-ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014)', color='cyan', ls='--')
+ax_total_snr.plot(redshift_linespace, snrd_md14, label=f'Madau & Dickinson (2014) [kcc={kcc_1:.4f}]', color='navy', ls='--')
 #ax_total_snr.plot(redshift_linespace, snrd_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
-ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_avg, label=f'Neijssel et. al (2019) [kcc={kcc_avg:.4f}]', color='purple', ls='--')
-ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1, label=f'Neijssel et. al (2019) [kcc={kcc_1:.4f}]', color='blue', ls='--')
-#ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1_upper, label=f'Neijssel et. al (2019) [kcc={kcc_1_upper:.4f}]', color='navy', ls='--')
-#ax_total_snr.plot(redshift_linespace, snrd_nv19 * kcc_1_lower, label=f'Neijssel et. al (2019) [kcc={kcc_1_lower:.4f}]', color='cyan', ls='--')
-ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Curve Fit - Current Study', color='orange')
-#ax_total_snr.plot(redshift_linespace, curve_all * kcc, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
+ax_total_snr.plot(redshift_linespace, sfrd_nv19 * kcc_avg, label=f'Neijssel et. al (2019) [kcc={kcc_avg:.4f}]', color='cyan', ls='--')
+ax_total_snr.plot(redshift_linespace, sfrd_nv19 * kcc_1, label=f'Neijssel et. al (2019) [kcc={kcc_1:.4f}]', color='darkturquoise', ls='--')
+ax_total_snr.fill_between(redshift_linespace, sfrd_nv19 * kcc_IIP, sfrd_nv19 * kcc_Ibc, color='royalblue', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
+ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Current Study (Curve Fit)', color='orange', zorder=99)
 
 # scatter
-ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black')
+ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black', zorder=100)
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
 # plot data points
-#ax_total_snr.axhline(0.447e-4, color='black', ls='--', label='0.447e-4')
-#ax_total_snr.axhline(0.258e-4, color='black', ls='--', label='0.258e-4')
-ax_total_snr.errorbar(0, 0.258e-4+0.447e-4, yerr=0.072e-4+0.139e-4, capsize=5, color='red', label='Li et al. (2011)', fmt='o')
-ax_total_snr.errorbar(0, 1.5e-4, yerr=[[0.3e-4], [0.4e-4]], capsize=5, color='brown', label='Mattila et al. (2012)', fmt='o')
-ax_total_snr.errorbar(0.072, 1.06e-4, yerr=[[0.19e-4], [0.19e-4]], xerr=[[0.009], [0.009]], capsize=5, color='hotpink', label='Taylor et al. (2014)', fmt='o')
-ax_total_snr.errorbar(0, 0.48e-4, yerr=[[0.23e-4], [0.23e-4]], capsize=5, color='gold', label='Cappellaro et al. (1999)', fmt='o')
-ax_total_snr.errorbar(0.26, 2.2e-4, yerr=[[0.7e-4], [0.8e-4]], capsize=5, color='greenyellow', label='Cappellaro et al. (2005)', fmt='o')
+H0 = 67.74 # km/s/Mpc from the TNG project
+h70 = H0/70 
+h75 = H0/75
+rho_b = 1.82e8 * h75 #Norberg et al -> luminosity density 
+c1999 = ((0.48/100) /1e10 ) * rho_b # conversion to yr-1 Mpc-3 using  1 SN (100yr)−1 (1010LBo)-1 abd h75
+c1999_err = ((0.23/100) /1e10 ) * rho_b
+print(f"Hubble, {h70}, {h75}")
+ax_total_snr.errorbar(0, 0.258e-4+0.447e-4, yerr=0.072e-4+0.139e-4, capsize=5, color='olive', label='Li et al. (2011)', fmt='o') #SN Mpc−3 yr−1 -> no conversion required - combimnation of II and Ibc rates
+#ax_total_snr.errorbar(0, 1.5e-4, yerr=[[0.3e-4], [0.4e-4]], capsize=5, color='brown', label='Mattila et al. (2012)', fmt='o')
+ax_total_snr.errorbar(0, c1999, yerr=[[c1999_err], [c1999_err]], capsize=5, color='gold', label='Cappellaro et al. (1999)', fmt='o') # converted using rate in SNu -> 1 SNu = 1 SN (100yr)−1 (1010LBo)-1
+ax_total_snr.errorbar(0.0149, 0.7e-4 * h70**3, yerr=[[0.09e-4 * h70**3], [0.1e-4 * h70**3]], capsize=5, color='maroon', label='Pessi et al. (2025)', fmt='o') #yr−1Mpc−3h370 -> remove h depdendance (has fractiosn and indifical rates as well)
+ax_total_snr.errorbar(0.072, 1.06e-4 * h70**3, yerr=[[0.19e-4 * h70**3], [0.19e-4 * h70**3]], xerr=[[0.009], [0.009]], capsize=5, color='hotpink', label='Taylor et al. (2014)', fmt='o') #(h/0.7)3 /(yr Mpc3)-> remove h70 dependance
+ax_total_snr.errorbar(0.1, 0.688e-4 * h70**3, yerr=[[0.078e-4 * h70**3], [0.078e-4 * h70**3]], capsize=5, color='darkgrey', label='Ma, Xiaoran et al. (2025)', fmt='o') #yr−1Mpc−3h370 -> remove h depdendance
+ax_total_snr.errorbar(0.26, 2.2e-4 * h75**3, yerr=[[0.7e-4 * h75**3], [0.8e-4 * h75**3]], capsize=5, color='black', label='Cappellaro et al. (2005)', fmt='o') # h3yr−1Mpc−3 -> h=h0/75
+ax_total_snr.errorbar(0.29, 1.42e-4 * h70**3, yerr=[[0.3e-4 * h70**3], [0.3e-4 * h70**3]], capsize=5, color='pink', label='Bazin et al. (2009)', fmt='o') # yr-1 (h70-1 Mpc)-3 [Measured from 117 ccSNe]
+
+# Strolger Et Al 2015 - all rates in  yr−1 Mpc−3 10−4h703
+# Ma et al quote table 2 not table 4 
+# GOODS + CANDLES + CLASH (table 4)
+"""
+ax_total_snr.errorbar(0.3, 2.13e-4 * h70**3, yerr=[[0.54e-4 * h70**3], [0.8e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(0.7, 3.86e-4 * h70**3, yerr=[[0.72e-4 * h70**3], [0.96e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(1.1, 3.07e-4 * h70**3, yerr=[[0.66e-4 * h70**3], [1.06e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(1.5, 3.25e-4 * h70**3, yerr=[[1.32e-4 * h70**3], [2.03e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(1.9, 3.16e-4 * h70**3, yerr=[[1.77e-4 * h70**3], [3.37e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(2.3, 6.17e-4 * h70**3, yerr=[[3.52e-4 * h70**3], [6.67e-4 * h70**3]], xerr=0.2, capsize=5, color='violet', label='Strolger et al. (2015)', fmt='o')
+"""
+# CANDLES + CLASH (table 2) as used by Ma and Wang et al (2025)
+ax_total_snr.errorbar(0.3, 1.97e-4 * h70**3, yerr=[[0.85e-4 * h70**3], [1.45e-4 * h70**3]], xerr=0.2, capsize=5, color='red', label='Strolger et al. (2015)', fmt='o')
+ax_total_snr.errorbar(0.7, 2.68e-4 * h70**3, yerr=[[1.04e-4 * h70**3], [1.54e-4 * h70**3]], xerr=0.2, capsize=5, color='red', fmt='o')
+ax_total_snr.errorbar(1.1, 1.70e-4 * h70**3, yerr=[[0.71e-4 * h70**3], [1.19e-4 * h70**3]], xerr=0.2, capsize=5, color='red', fmt='o')
+ax_total_snr.errorbar(1.5, 3.25e-4 * h70**3, yerr=[[1.32e-4 * h70**3], [2.03e-4 * h70**3]], xerr=0.2, capsize=5, color='red', fmt='o')
+ax_total_snr.errorbar(1.9, 3.16e-4 * h70**3, yerr=[[1.77e-4 * h70**3], [3.37e-4 * h70**3]], xerr=0.2, capsize=5, color='red', fmt='o')
+ax_total_snr.errorbar(2.3, 6.17e-4 * h70**3, yerr=[[3.52e-4 * h70**3], [6.67e-4 * h70**3]], xerr=0.2, capsize=5, color='red', fmt='o')
+
+"""
+#Melinder et al. (2012)
 ax_total_snr.errorbar(0.39, 3.29e-4, yerr=[[1.78e-4], [3.08e-4]], capsize=5, color='pink', label='Melinder et al. (2012)', fmt='o') # using statistical errors
 ax_total_snr.errorbar(0.73, 6.40e-4, yerr=[[3.12e-4], [5.30e-4]], capsize=5, color='pink', label='Melinder et al. (2012)', fmt='o')
 
-ax_total_snr.errorbar(0.39, 3e-4, yerr=[[0.94e-4], [1.28e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
-ax_total_snr.errorbar(0.73, 7.39e-4, yerr=[[1.52e-4], [1.86e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
-ax_total_snr.errorbar(1.11, 9.57e-4, yerr=[[2.80e-4], [3.76e-4]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+# Dahlen et al. Mpc−3 10−4 h70^3 -> remove h dependance
+ax_total_snr.errorbar(0.39, 3e-4* h70**3, yerr=[[0.94e-4* h70**3], [1.28e-4* h70**3]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+ax_total_snr.errorbar(0.73, 7.39e-4* h70**3, yerr=[[1.52e-4* h70**3], [1.86e-4* h70**3]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+ax_total_snr.errorbar(1.11, 9.57e-4* h70**3, yerr=[[2.80e-4* h70**3], [3.76e-4* h70**3]], capsize=5, color='violet', label='Dahlen et al. (2012)', fmt='o')
+"""
 
 # set legend and axes
 ax_total_snr.set_yscale('linear')
-ax_total_snr.set_ylim(-5e-5, 12e-4)
-ax_total_snr.set_xlim(right=5)
-ax_total_snr.yaxis.set_major_formatter(
-    ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}')
-)
+ax_total_snr.set_ylim(-1e-5, 12e-4)
+#ax_total_snr.set_ylim(1e-5, 10e-4)
+ax_total_snr.set_xlim(-0.2, 6)
+ax_total_snr.yaxis.set_major_formatter(ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}'))
 plt_labels(fig_total_snr, ax_total_snr, 3, 0.17)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
