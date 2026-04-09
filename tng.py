@@ -451,19 +451,22 @@ def supernova_efficiency(_imf, sn_type=20):
     # bpass - max = 100, min = 1
 
     # Smith 2014
-    # Binaries: IIP 8.5-18, II-Other 18-37, Ib 8.5-12/4
+    # Binaries: IIP 8.5-18.7, II-Other 18.7-37, Ib/c 37-100
     # IIP 8.5-13.7, II-Other 13.7-22, Ibc 22-100
 
     denominator, _ = integrate.quad(lambda m: m * _imf(m), 1, 100)
     if sn_type == 20:
-        # up to 25 solar masses for type 2 
-        numerator, _ = integrate.quad(_imf, 8.5, 13.7)
+        # up to 25 solar masses for type IIP
+        #numerator, _ = integrate.quad(_imf, 8.5, 13.7)
+        numerator, _ = integrate.quad(_imf, 8.5, 18.7)
     elif sn_type == 25:
-        # up to 25 solar masses for type 2 
-        numerator, _ = integrate.quad(_imf, 13.7, 22)
+        # up to 25 solar masses for type II-oither 
+        #numerator, _ = integrate.quad(_imf, 13.7, 22)
+        numerator, _ = integrate.quad(_imf, 18.7, 23.1)
     elif sn_type == 10:
         # 25 to 100 solar mass for type 1b/c
-        numerator, _ = integrate.quad(_imf, 22, 100)
+        #numerator, _ = integrate.quad(_imf, 22, 100)
+        numerator, _ = integrate.quad(_imf, 37, 100)
     elif sn_type == 5:
         # approximation for star formation conversion 
         # 8 to 100 solar masses (include all regions)
@@ -536,6 +539,7 @@ def cosmic_level(snaps, kcc_type):
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
     csfrh_kcc_chabrier = md14_snrd_scaled / kcc_chabrier
     csfrh_kcc_chabrier_raw = rev_snrd_1000_scaled / kcc_chabrier
+    print(' SFR', rev_snrd_1000_scaled[7])
 
     artificial = 4 * md14_snrd_scaled / kcc_chabrier
 
@@ -594,6 +598,7 @@ _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
 fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3)
 fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
@@ -632,7 +637,9 @@ for i, sn_type in enumerate(all_sn_types):
     else:
         total_snr = total_snr + snrd
 
-    plot_names = ['1', '2', '3', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
+    print('Total SNR:', total_snr[7])
+
+    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
         if idx > 2:
             curr_fig = plt.figure(fig_num)
@@ -640,38 +647,16 @@ for i, sn_type in enumerate(all_sn_types):
             plt.close(curr_fig)
 
     ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}', color=sn_colours[i])
+    ax_types2.plot(rev_redshifts, sfrh, label=f'{sn_type}', color=sn_colours[i])
     test_dict[sn_type] = [sfrh, snrd]
 
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
+ax_types2.plot(rev_redshifts, total_sfr, label=f'Total', linestyle='--', color=sn_colours[4])
 plt_labels(fig_types1, ax_types1, 3)
+plt_labels(fig_types2, ax_types2, 3)
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-#region STAR Formation graph
-# curve fit - guess using nv19 (closest to our values)
-curve_sfr = curve_md14(rev_redshifts, total_sfr, 3)
-curve_all = curve_md14(rev_redshifts, sfrh_halos, 3)
-curve_100 = curve_md14(rev_redshifts, sfrh_1000, 3)
-
-# plot lines
-ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
-ax_total_sfr.plot(redshift_linespace, sfrh_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
-ax_total_sfr.plot(redshift_linespace, sfrh_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
-ax_total_sfr.plot(redshift_linespace, curve_sfr, label=f'Curve Fit - Current Study (Prediction From SNRD)', color='orange')
-ax_total_sfr.plot(redshift_linespace, curve_all, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
-ax_total_sfr.plot(redshift_linespace, curve_100, label=f'Curve Fit - TNG100-1 (Top 1000 Halos)', color='forestgreen')
-
-# scatter
-ax_total_sfr.scatter(rev_redshifts, total_sfr, label=f'Current Study (Prediction From SNRD)', color='orange', marker='D', edgecolors='black')
-ax_total_sfr.scatter(rev_redshifts, sfrh_halos, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
-ax_total_sfr.scatter(rev_redshifts, sfrh_1000, label=f'TNG100-1 (Top 1000 Halos)', color='forestgreen', marker='D', edgecolors='black')
-
-plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.17)
-ax_total_sfr.set_yscale('linear')
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-#region Supernova rate graph
-# curve fit the scatter data 
-curve_snr = curve_md14(rev_redshifts, total_snr, 3)
+# kcc calculations 
 
 # apply a generic kcc scaling the star formation predictions
 # there is no supernova types depdenance so cannot dynamically change it 
@@ -690,17 +675,48 @@ kcc_1_upper = (((0.4388 - 0.044)* kcc_IIP) + ((0.2263 - 0.0199) * kcc_II_Other) 
 #kcc_2 = ((0.469 * kcc_IIP) + (0.248 * kcc_II_Other) + ((0.184 + 0.099)*kcc_Ibc))
 
 print('scaling avg;', kcc_avg)
-print('scaling 1;', kcc_1)
+print('scaling weighted;', kcc_1)
 print('scaling upper;', kcc_1_upper)
 print('scaling lower;', kcc_1_lower)
 
+# NOTE: upper and lower kcc limits are extrenely close to each other so are not used 
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region STAR Formation graph
+# curve fit - guess using nv19 (closest to our values)
+curve_sfr = curve_md14(rev_redshifts, total_sfr, 3) # DONT THINK THIS IS RIGHT 
+curve_all = curve_md14(rev_redshifts, sfrh_halos, 3)
+curve_100 = curve_md14(rev_redshifts, sfrh_1000, 3)
+
+curve_snr = curve_md14(rev_redshifts, total_snr, 3)
+curve_sfr = curve_md14(rev_redshifts, total_snr/kcc_1, 3) # Apply kcc to snrd after averaging (accounts for fractions)
+#curve_sfr = curve_md14(rev_redshifts, new_sfr, 3)
+
+# plot lines
+#ax_total_sfr.fill_between(redshift_linespace, curve_snr/kcc_IIP, curve_snr/kcc_Ibc, color='orange', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
+ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
+ax_total_sfr.plot(redshift_linespace, sfrh_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
+ax_total_sfr.plot(redshift_linespace, sfrh_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
+ax_total_sfr.plot(redshift_linespace, curve_sfr, label=f'Curve Fit - Current Study (Prediction From SNRD)', color='orange')
+ax_total_sfr.plot(redshift_linespace, curve_all, label=f'Curve Fit - TNG100-1 (All Halos)', color='lime')
+ax_total_sfr.plot(redshift_linespace, curve_100, label=f'Curve Fit - TNG100-1 (Top 1000 Halos)', color='forestgreen')
+
+# scatter - no longer plotting total_sfr -> throws fractionbs out and makes total sfr too large
+ax_total_sfr.scatter(rev_redshifts, total_snr/kcc_1, label=f'Current Study (Prediction From SNRD)', color='orange', marker='D', edgecolors='black')
+ax_total_sfr.scatter(rev_redshifts, sfrh_halos, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
+ax_total_sfr.scatter(rev_redshifts, sfrh_1000, label=f'TNG100-1 (Top 1000 Halos)', color='forestgreen', marker='D', edgecolors='black')
+
+plt_labels(fig_total_sfr, ax_total_sfr, 2, 0.17)
+ax_total_sfr.set_yscale('linear')
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+#region Supernova rate graph
 
 # prep predictions again (could move them out of func)
 # remake md14 as we do not want to use snrd_md14_ from above as this will have kcc corrosponding to Ic supernova (high mass)
 # this will be smaller than the averaged prediction from above 
 snrd_md14 = 0.015 * pow((1 + redshift_linespace), 2.7)/(1 + pow((1 + redshift_linespace)/2.9, 5.6)) * kcc_1
 snrd_mf17 = 0.01 * pow((1 + redshift_linespace), 2.6)/(1 + pow((1 + redshift_linespace)/3.2, 6.2)) * kcc_1
-
 sfrd_nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))
 
 # plot lines
@@ -771,6 +787,7 @@ ax_total_snr.yaxis.set_major_formatter(ticker.FuncFormatter(lambda val, pos: f'{
 plt_labels(fig_total_snr, ax_total_snr, 3, 0.17)
 
 fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
+fig_types2.savefig("Data/Images/TNG/final/cosmic_type(sfr).png", dpi=300)
 fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
 fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
 
