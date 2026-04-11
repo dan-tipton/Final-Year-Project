@@ -9,6 +9,7 @@ sizes2 = [47.38, 25.06, 18.60, 9.95]
 errors2 = [0.86, 1.69, 1.66, 0.61]
 
 colors = ['#FF5733', '#33FF57', "#4C6CFD", "#FFD012"]
+fontsize = 14
 # Create figure with 1 row, 2 columns
 fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
@@ -16,7 +17,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 def make_autopct(labels, errors):
     def inner(pct):
         idx = make_autopct.idx
-        result = f"{labels[idx]}\n{pct:.1f}±{errors[idx]}%"
+        result = f"{labels[idx]}\n{pct:.2f}±{errors[idx]}%"
         make_autopct.idx += 1
         return result
     make_autopct.idx = 0
@@ -32,7 +33,7 @@ axes[0].pie(
     pctdistance=0.6,              # distance of label from center
     startangle=90,
     wedgeprops={'edgecolor':'black', 'linewidth':2},
-    textprops={'color':'white', 'weight':'bold'}  # <-- white text
+    textprops={'color':'white', 'weight':'bold', 'fontsize': fontsize}  # <-- white text
 )
 axes[0].set_title("A)")
 axes[0].axis('equal')
@@ -47,7 +48,7 @@ axes[1].pie(
     pctdistance=0.6,              # distance of label from center
     startangle=90,
     wedgeprops={'edgecolor':'black', 'linewidth':2},
-    textprops={'color':'white', 'weight':'bold'}  # <-- white text
+    textprops={'color':'white', 'weight':'bold', 'fontsize': fontsize}  # <-- white text
 )
 axes[1].set_title("B)")
 axes[1].axis('equal')

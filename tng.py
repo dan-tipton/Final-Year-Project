@@ -230,7 +230,7 @@ def curve_md14(redshifts, array, guess=1):
     x_linespace = np.linspace(redshifts.min(), redshifts.max(), 300)
     md14_fit = sfrd_func(x_linespace, *params)
 
-    return md14_fit
+    return md14_fit, [params,cov]
 
 # generate figure and axes
 def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=None):
@@ -406,7 +406,11 @@ def halo_level(snaps):
     slope, intercept = coeffs
     x_line = np.logspace(np.log10(x_filtered.min()), np.log10(x_filtered.max()), 200)
     y_line = 10**(slope * np.log10(x_line) + intercept)
-    ax_dense.plot(x_line, y_line, color='red', linewidth=1.5, label=f'Slope={slope:.2f}, Intercept={intercept:.2f}')
+
+    slope, intercept = np.polyfit(x_filtered, y_filtered, 1)
+    x_line = np.linspace(x_filtered.min(), x_filtered.max(), 200)
+    y_line = slope * x_line + intercept
+    ax_dense.plot(x_line, y_line, color='red', linewidth=1.5, label=f'Slope={slope:.4f}, Intercept={intercept:.2f}')
 
     # average plots 
     x_line, y_line, av_slope, av_intercept = line_fit(all_av_sfrd, all_av_snrd)
@@ -513,12 +517,12 @@ def cosmic_level(snaps, kcc_type):
     nv19 = 0.01 * pow((1 + redshift_linespace), 2.77)/(1 + pow((1 + redshift_linespace)/2.9, 4.7))  
 
     # snrd curve fits
-    md14_snrd_scaled = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
-    md14_snrd_alt_scaled = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
-    md14_snrd_mass_scaled = curve_md14(rev_redshifts, rev_snrd_mass_scaled)
+    md14_snrd_scaled, _ = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
+    md14_snrd_alt_scaled, _ = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
+    md14_snrd_mass_scaled, _ = curve_md14(rev_redshifts, rev_snrd_mass_scaled)
 
     # sfrd 
-    md14_sfrd_all = curve_md14(rev_redshifts, rev_sfrd_all)
+    md14_sfrd_all, _ = curve_md14(rev_redshifts, rev_sfrd_all)
 
     # quoted core collapse efficiency scaling for salpeter
     # we will want a chabrier (need to caluclate it)
@@ -637,7 +641,8 @@ for i, sn_type in enumerate(all_sn_types):
     else:
         total_snr = total_snr + snrd
 
-    print('Total SNR:', total_snr[7])
+    print(' SNR:', ', '.join(f'{s * 10**4:.4f}' for s in snrd))
+    #print(' Total SNR:', total_snr[7])
 
     plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
@@ -678,22 +683,27 @@ print('scaling avg;', kcc_avg)
 print('scaling weighted;', kcc_1)
 print('scaling upper;', kcc_1_upper)
 print('scaling lower;', kcc_1_lower)
+print('scaling error;', kcc_1_upper - kcc_1_lower)
 
 # NOTE: upper and lower kcc limits are extrenely close to each other so are not used 
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 #region STAR Formation graph
 # curve fit - guess using nv19 (closest to our values)
-curve_sfr = curve_md14(rev_redshifts, total_sfr, 3) # DONT THINK THIS IS RIGHT 
-curve_all = curve_md14(rev_redshifts, sfrh_halos, 3)
-curve_100 = curve_md14(rev_redshifts, sfrh_1000, 3)
+curve_sfr, _ = curve_md14(rev_redshifts, total_sfr, 3) # DONT THINK THIS IS RIGHT 
+curve_all, _ = curve_md14(rev_redshifts, sfrh_halos, 3)
+curve_100, _ = curve_md14(rev_redshifts, sfrh_1000, 3)
 
-curve_snr = curve_md14(rev_redshifts, total_snr, 3)
-curve_sfr = curve_md14(rev_redshifts, total_snr/kcc_1, 3) # Apply kcc to snrd after averaging (accounts for fractions)
-#curve_sfr = curve_md14(rev_redshifts, new_sfr, 3)
+#print('total snr', *(total_snr*10**4))
+print('total snr:', ', '.join(f'{s * 10**4:.4f}' for s in total_snr))
+print('redshifts:', ', '.join(f'{r:.4f}' for r in rev_redshifts))
+curve_snr, _ = curve_md14(rev_redshifts, total_snr, 3)
+curve_sfr, params = curve_md14(rev_redshifts, total_snr/kcc_1, 3) # Apply kcc to snrd after averaging (accounts for fractions)
+print('Params:',*params[0])
+print('errors:',np.sqrt(np.diag(params[1])))
 
 # plot lines
-#ax_total_sfr.fill_between(redshift_linespace, curve_snr/kcc_IIP, curve_snr/kcc_Ibc, color='orange', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
+ax_total_sfr.fill_between(redshift_linespace, curve_snr/kcc_IIP, curve_snr/kcc_Ibc, color='orange', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
 ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
 ax_total_sfr.plot(redshift_linespace, sfrh_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
 ax_total_sfr.plot(redshift_linespace, sfrh_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
@@ -786,10 +796,10 @@ ax_total_snr.set_xlim(-0.2, 6)
 ax_total_snr.yaxis.set_major_formatter(ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}'))
 plt_labels(fig_total_snr, ax_total_snr, 3, 0.17)
 
-fig_types1.savefig("Data/Images/TNG/final/cosmic_type.png", dpi=300)
-fig_types2.savefig("Data/Images/TNG/final/cosmic_type(sfr).png", dpi=300)
-fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic_sfh.png", dpi=300)
-fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic_snh.png", dpi=300)
+fig_types1.savefig("Data/Images/TNG/final/cosmic/cosmic_type.png", dpi=300)
+fig_types2.savefig("Data/Images/TNG/final/cosmic/cosmic_type(sfr).png", dpi=300)
+fig_total_sfr.savefig(f"Data/Images/TNG/final/cosmic/cosmic_sfh.png", dpi=300)
+fig_total_snr.savefig(f"Data/Images/TNG/final/cosmic/cosmic_snh.png", dpi=300)
 
 plt.close(fig_total_sfr)
 plt.close(fig_total_snr)
@@ -846,5 +856,5 @@ for idx, item in enumerate(test_dict.items()):
     ax_ratio.scatter(rev_redshifts, y, label=name, color=sn_colours[idx], marker='D', edgecolors='black', zorder=40)
 
 plt_labels(fig_ratio, ax_ratio, 4, 0.07)
-fig_ratio.savefig("Data/Images/TNG/final/cosmic_ratio.png", dpi=300)
+fig_ratio.savefig("Data/Images/TNG/final/cosmic/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))
