@@ -275,16 +275,18 @@ def plt_labels_multiple(fig, axs, col):
 def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
 
     fig_cosmo, ax_cosmo1 = plt_helper(8, 7, 'Redshift (z)', ylabel, logx=False, legendspace=space)
-
+    
+    redshifts = [0] + redshifts
     lookback_time_grid = cosmo.lookback_time(redshifts).value  # in Gyr
+    #print('redshifts', redshifts)
+    #print('lookbacks', lookback_time_grid)
     redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
     age_to_redshift = interp1d(lookback_time_grid, redshifts, bounds_error=False, fill_value="extrapolate")
 
     ax_cosmic = ax_cosmo1.secondary_xaxis('top', functions=(redshift_to_age, age_to_redshift))
     ax_cosmic.set_xlabel("Cosmic Lookback [Gyr]")
-    ax_cosmic.set_xscale('log')
-    ax_cosmic.xaxis.set_major_formatter(ScalarFormatter()) 
-    ax_cosmic.set_xticks([1, 2, 4, 6, 8, 10, 12, 14])
+    ax_cosmic.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax_cosmic.ticklabel_format(style='plain', axis='x')
 
     if ytwin is not None:
         ax_cosmo2 = ax_cosmo1.twinx()
@@ -296,6 +298,10 @@ def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
         ax_cosmo2 = None
     
     ax_cosmo1.set_yscale('log')
+    #ax_cosmo1.set_xscale('log')
+
+    ax_cosmo1.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax_cosmo1.ticklabel_format(style='plain', axis='x')
 
     return fig_cosmo, ax_cosmo1, ax_cosmo2
 
@@ -703,7 +709,7 @@ print('Params:',*params[0])
 print('errors:',np.sqrt(np.diag(params[1])))
 
 # plot lines
-ax_total_sfr.fill_between(redshift_linespace, curve_snr/kcc_IIP, curve_snr/kcc_Ibc, color='orange', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
+#ax_total_sfr.fill_between(redshift_linespace, curve_snr/kcc_IIP, curve_snr/kcc_Ibc, color='orange', alpha=0.1, label=f'[{kcc_Ibc:.4f} < kcc <  {kcc_IIP:.4f}]')
 ax_total_sfr.plot(redshift_linespace, sfrh_md14, label=f'Madau & Dickinson (2014)', color='navy', ls='--')
 ax_total_sfr.plot(redshift_linespace, sfrh_mf17, label=f'Madau & Fragos (2017)', color='purple', ls='--')
 ax_total_sfr.plot(redshift_linespace, sfrh_nv19, label=f'Neijssel et. al (2019)', color='cyan', ls='--')
