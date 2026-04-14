@@ -841,6 +841,7 @@ for idx, item in enumerate(test_dict.items()):
 
     print(f'{name}:')
     print(f'  SN: {sn_ratio*100:.2f} ± {sn_err*100:.2f}, {sn_err_1*100:.2f}')
+    print(f'  SN With Redshift: {sn_values*100}')
     print(f'  SF: {sf_ratio*100:.2f} ± {sf_err*100:.2f}')
     ratios.append(sn_ratio)
 

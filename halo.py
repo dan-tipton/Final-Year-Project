@@ -155,7 +155,9 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             std_error_bin = std_dev_bin / np.sqrt(len(avg_ratio))
 
             # plot
-            axes_bin[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black')
+            axes_bin[i].errorbar(bin_centers, avg_ratio, yerr=std_error_bin, color='black', fmt='D', capsize=5, zorder=10)
+            axes_bin[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
+
             axes[i].errorbar(bin_centers, avg_ratio, yerr=std_error_bin, color='black', fmt='D', capsize=5, zorder=10)
             axes[i].scatter(bin_centers, avg_ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=20)
 
@@ -166,10 +168,6 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             #regress = linear(z_log, slope, intercept)
             print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
             
-            #model = LinearRegression()
-            #model.fit(z_log, avg_ratio)
-            #y_pred = model.predict(z_log)
-
             axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
             axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
             axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
@@ -307,7 +305,7 @@ def run_cosmic():
         sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
         print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
 
-        
+        # combine
         
     ax.set_xlabel("Redshift")
     ax.set_ylabel("Supernova Fraction")
