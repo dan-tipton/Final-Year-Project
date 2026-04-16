@@ -252,7 +252,7 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 # set labels for axes 
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22)
 
     if gap != None:
         fig.tight_layout(rect=[0, gap, 1, 1])

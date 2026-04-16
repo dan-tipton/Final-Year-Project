@@ -66,8 +66,8 @@ massList = myStarMass.generateListSolarMasses()
 
 for idx, func in enumerate(functions):
     for mass in massList:
-        imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
-        #imfDict[keys[idx]].append(func(mass))
+        #imfDict[keys[idx]].append(norms[keys[idx]] * func(mass))
+        imfDict[keys[idx]].append(func(mass))
 
 """
 # Old code for getting plot data 
@@ -249,18 +249,19 @@ for key, values in imfDict.items():
         linestyle = 'dotted'
     ax.plot(massList, values, label=key, marker=None, linestyle=linestyle)
 
-ax.set_xlabel("Log (Mass [M☉])")
-ax.set_ylabel("Log (ξ(m)Δm)")
+ax.set_xlabel("Log (Mass [M☉])", fontsize=18)
+ax.set_ylabel("Log (ξ(m)Δm)", fontsize=18)
 #ax.set_title(r"Initial Mass Functions (IMF), Normalised to $\mathrm{10^{6}}$ $\mathrm{M_\odot}$")
 #ax.set_title(f"Initial Mass Functions (IMF)")
 #plt.title(f"Initial Mass Functions (IMF)")
 ax.set_xscale('log')
 ax.set_yscale('log')
-ax.set_ylim(10**-2,10**9)
-#ax.set_ylim(10**-7,10**4)
+#ax.set_ylim(10**-2,10**9)
+ax.set_ylim(10**-7,10**4)
+ax.tick_params(axis='both', labelsize=18)
 handles, labels = ax.get_legend_handles_labels()
-fig.legend(handles, labels, loc="lower center", ncol=3)
+fig.legend(handles, labels, loc="lower center", ncol=4, frameon=False)
 fig.tight_layout(rect=[0, 0.15, 1, 1])
-fig.savefig("Final/Images/IMF_highres_norm.png", dpi=300)
+fig.savefig("Final/Images/IMF_new.png", dpi=300)
 fig.show()
 
