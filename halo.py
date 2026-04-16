@@ -251,7 +251,8 @@ def animate_plotter(snaps, save_gif=False, gif_name="animation.gif"):
             ax.plot(binc, av, label=sn, color=color)
         
         ax.set_xscale('log')
-        ax.set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}}$]')
+        #ax.set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]')
+        ax.set_xlabel('Subhalo Mass [$\mathrm{M_\odot}$]')
         ax.set_ylabel("Supernova Fraction [%]")
         ax.set_title(f"Redshift={z:.2f} (Snapshot {frame+1}/{len(snaps)})")
         ax.legend(loc='upper right')
@@ -318,7 +319,7 @@ def run_cosmic():
 
 run_redshift()
 run_cosmic()
-#animate_plotter(snapshots, True)
+animate_plotter(snapshots, True)
 
 
 """

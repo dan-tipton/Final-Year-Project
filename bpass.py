@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = -1
+mode = 2
 
 # region Imports
 import pandas as pd
@@ -65,20 +65,20 @@ if mode == -1:
             for mtl in bpass.metallicities:
 
                 # Age plots
-                agePlot = bpassPlotter.agePlots(imf, mtl, sinbin, False)
-                agePlot.title(f"Age/SN Rate: {sinbin}-imf{imf}.z{mtl}")
+                agePlot, ax = bpassPlotter.agePlots(imf, mtl, sinbin, False)
+                #ax.set_title(f"Age/SN Rate: {sinbin}-imf{imf}.z{mtl}")
                 ageSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Age", f"imf{imf}_{sinbin}_z{mtl}_age.png")
                 agePlot.savefig(ageSavePath, dpi=300)
-                agePlot.close()
-                plt.close()
+                #agePlot.close()
+                plt.close(agePlot)
 
                 # Photon rate plots
-                ionPlot = bpassPlotter.ionPlots(imf, mtl, sinbin, False)
-                ionPlot.title(f"Photon Rate/SN Rate: {sinbin}-imf{imf}.z{mtl}")
+                ionPlot, axI = bpassPlotter.ionPlots(imf, mtl, sinbin, False)
+                axI.set_title(f"Photon Rate/SN Rate: {sinbin}-imf{imf}.z{mtl}")
                 ionSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Ion", f"imf{imf}_{sinbin}_z{mtl}_ion.png")
                 ionPlot.savefig(ionSavePath, dpi=300)
-                ionPlot.close()
-                plt.close()
+                #ionPlot.close()
+                plt.close(ionPlot)
 
                 i += 1
 

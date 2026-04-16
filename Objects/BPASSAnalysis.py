@@ -26,6 +26,7 @@ import scipy.stats as scs
 from scipy.stats import norm
 import warnings
 warnings.filterwarnings("ignore", message="Data has no positive values, and therefore cannot be log-scaled.")
+from matplotlib.ticker import FuncFormatter
 
 
 from Helpers.PlotHelper import PlotHelper
@@ -131,11 +132,12 @@ class BPASSAnalysis():
         # Array of all metallicities in BPASS as numbers (used for plotting x axis)
         allMtls = [1e-5, 1e-4, 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.008, 0.010, 0.020, 0.030, 0.040]
         # keep plot colours conistsent as there is a plt.plot and plt.errorbar
-        colours = ['blue', 'red', 'orange', 'pink', 'green', 'purple', 'brown', 'black', 'cyan', 'lime', 'gold', 'navy']
+        #colours = ['blue', 'red', 'orange', 'pink', 'green', 'purple', 'brown', 'black', 'cyan', 'lime', 'gold', 'navy']
+        colours = ["#000000", '#FF5733', '#33FF57', '#3357FF', "#FFD012", "#544051", "#FF4FD6", "#933823", "#202FB7"]
 
         i = 0
         coeffDataframe = []
-        myPlot, ax = plt.subplots(figsize=(8,7))
+        myPlot, ax = plt.subplots(figsize=(8,6))
         for header in headers:
             # Skip error columns
             if 'Err_' not in header:
@@ -273,15 +275,19 @@ class BPASSAnalysis():
                 # plotting
                 ax.plot(xPlot, polyPlot, label=header, color=colours[i])
                 #ax.scatter(allMtls, snRates, color=colours[i])#, yerr=errSnRates, fmt='o', label="_nolegend_", color=colours[i])
-                ax.errorbar(allMtls, snRates, yerr=errSnRates, fmt='o', label="_nolegend_", color=colours[i])
+                ax.errorbar(allMtls, snRates, yerr=errSnRates, fmt='D', label="_nolegend_", color=colours[i], capsize=5, zorder=10)
+                ax.scatter(allMtls, snRates, color=colours[i], marker='D', edgecolors='black', zorder=20)
                 #ax.set_yscale('log')
-                myPlot.subplots_adjust(bottom=0.2, right=0.95)
-                ax.set_ylabel(r'Event Rate [$\mathrm{yr^{-1}}$]')
-                ax.set_xlabel('Metallicity (Z)')
-                ax.set_title(f'BPASS Age Bin: {age:.2} log(yrs)') 
+                #myPlot.subplots_adjust(bottom=0.2, right=0.95)
+                ax.set_ylabel(r'Event Rate [$\mathrm{10^{-4} yr^{-1}}$]', fontsize=18)
+                ax.set_xlabel('Metallicity (Z)', fontsize=18)
+                #ax.set_title(f'BPASS Age Bin: {age:.2} log(yrs)') 
+                ax.tick_params(axis='both', labelsize=18)
+                ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x * 10000:.2f}"))
         
         handles, labels = ax.get_legend_handles_labels()
-        myPlot.legend(handles, labels,loc='lower center',ncol=3, frameon=False)
+        myPlot.legend(handles, labels,loc='lower center',ncol=4, frameon=False, fontsize=18)
+        myPlot.tight_layout(rect=[0, 0.15, 1, 1])
 
         # If plot is true open and show plots
         if plot: 

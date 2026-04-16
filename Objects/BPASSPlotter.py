@@ -194,10 +194,10 @@ class BPASSPlotter():
                     currdf = subterm.data
                     if subterm.sinbin == sinbin and subterm.mtl == mtl:
                         x = currdf['Log(age/yrs)']
-                        myPlot = PlotHelper("-", "Age [log(yrs)]", "Supernova Number")
+                        myPlot = PlotHelper("-", "Age [log(yrs)]", "Number of Events")
                         if dashed: 
                             myPlot = PlotHelper("--", "Age", "SN Rate")
-                        agePlot = myPlot.makePlot(
+                        agePlot, ax = myPlot.makePlot(
                             'Age: ' + singleBinary + ' IMF' + term.imfname + '_z' + subterm.mtl,
                             x, 
                             currdf['IIP'],
@@ -208,10 +208,10 @@ class BPASSPlotter():
                             currdf['Pair-Instab'],
                             currdf['Low-mass']
                             )
-                        agePlot.yscale('log')
+                        #agePlot.yscale('log')
                         #agePlot.show()
                         returnPlot = agePlot
-        return returnPlot
+        return returnPlot, ax
     
     def ionPlots(self, imf, mtl, sinbin, dashed: bool):
         returnPlot = plt
