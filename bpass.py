@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 2
+mode = 3
 
 # region Imports
 import pandas as pd

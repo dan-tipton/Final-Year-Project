@@ -413,6 +413,7 @@ class BPASSAnalysis():
             # generate normal dist and randomly select a rate
             normal = stats.normalDist(snRate, std)
             randomRate = random.choice(normal)
+            print(randomRate)
 
             # check that the normal distribution has positive values
             if np.array(normal).max() < 0:
@@ -434,24 +435,25 @@ class BPASSAnalysis():
             # histogram plots real random data
             plt.hist(normal, bins=40, density=True, alpha=0.5, color='firebrick')
             plt.plot(theoretical_x, theoretical_y, color='red', linewidth=2)
-            plt.axvline(randomRate, color='red', linestyle='dashed', linewidth=2, label=f'Random value: {randomRate:.2}')
+            label_random = r'Random value:' + f"{randomRate:.2e}"
+            plt.axvline(randomRate, color='red', linestyle='dashed', linewidth=2, label=label_random)
 
             # mean line
             plt.annotate('',xy=(snRate, yMax),xytext=(snRate, 0),arrowprops=dict(arrowstyle='<->', color='black'))
-            plt.text(snRate, yMax + 0.01*yMax, f'μ: {snRate:.2}', ha='center')
+            plt.text(snRate, yMax + 0.01*yMax, f'μ: {snRate:.2e}', ha='center', fontsize=18)
 
             # sigma line
             plt.annotate('',xy=(snRate, sigmaHeight),xytext=(snRate + std, sigmaHeight),arrowprops=dict(arrowstyle='<->', color='black'))
             #plt.text(snRate + std / 2,  sigmaHeight + (sigmaHeight*0.05), f'σ: {std:.2}', ha='center')
-            plt.text(snRate + fwhm/1.65,  sigmaHeight + (sigmaHeight*0.01), f'σ: {std:.2}', ha='center')
+            plt.text(snRate + fwhm/1.25,  sigmaHeight + (sigmaHeight*0.01), f'σ: {std:.2}', ha='center', fontsize=18)
 
             # FWHM line
-            print(fwhm)
-            plt.annotate('',xy=(snRate - fwhm/2, yMax/2),xytext=(snRate + fwhm/2, yMax/2),arrowprops=dict(arrowstyle='<->', color='black'))
+            #print(fwhm)
+            plt.annotate('',xy=(snRate - fwhm/2, yMax/2),xytext=(snRate + fwhm/2, yMax/2),arrowprops=dict(arrowstyle='<->', color='black'), fontsize=18)
             plt.axvline(snRate - fwhm/2, color='black', linestyle='dashed', linewidth=1, alpha=0.5)
             plt.axvline(snRate + fwhm/2, color='black', linestyle='dashed', linewidth=1, alpha=0.5)
             #plt.text(snRate * 0.99, yMax/2 + ((yMax/2)*0.05), f'FWHM: {fwhm:.2}', ha='center')
-            plt.text(snRate + fwhm/1.25, yMax/2 - 0.01*yMax, f'FWHM: {fwhm:.2}', ha='center')
+            plt.text(snRate + fwhm, yMax/2 - 0.01*yMax, f'FWHM: {fwhm:.2}', ha='center', fontsize=18)
             """
             plt.arrow(snRate - fwhm/2, 0.0041, fwhm, 0, color='black', shape='full', 
                     head_width=0.00005, head_length=15, length_includes_head=True, width = 0.00001)
@@ -462,10 +464,14 @@ class BPASSAnalysis():
             #plt.title(f"Normally Distributed Supernova Rates:\n{str(sn_df.iloc[0])} imf{imf} {'binary' if str(sinbin) == 'bin' else 'single'} z:{str(z):.5} Age:{str(age):.3}yrs")
             print(f"Supernova Type: {str(sn_df.iloc[0])} imf{imf} {'binary' if str(sinbin) == 'bin' else 'single'} z:{str(z):.5} Age:{str(age):.3}yrs")
             
-            plt.xlabel(r"Supernova Event Rate [$\mathrm{yr^{-1}}$]")
-            plt.ylabel("Probability Density")
+            plt.ylabel(r"Probability Density [$\mathrm{10^{4}}$]", fontsize=18)
+            plt.xlabel(r"Supernova Event Rate [$\mathrm{10^{-4} yr^{-1}}$]", fontsize=18)
+            plt.gca().tick_params(axis='both', labelsize=18)
+            plt.gca().yaxis.set_major_formatter(FuncFormatter(lambda y, _: f"{y / 1e4:.2}"))
+            plt.gca().xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x * 1e4:.2}"))
             #plt.ylim(0, 0.0050)
-            plt.legend()
+            plt.tight_layout(rect=[0, 0, 1, 0])
+            plt.legend(fontsize=18)
             plt.show()
 
         if err == 1:

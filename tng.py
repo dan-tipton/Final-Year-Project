@@ -655,7 +655,7 @@ for i, sn_type in enumerate(all_sn_types):
 
     plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
-        if idx > 2:
+        if idx > 3:
             curr_fig = plt.figure(fig_num)
             plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
             plt.close(curr_fig)
