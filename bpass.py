@@ -51,6 +51,7 @@ if mode == -1:
 
 
     # loop through each imf and generate all plots
+    #for imf in ['_chab100']:
     for imf in bpass.imfNames:
         i = 0
         j = 0
@@ -67,6 +68,12 @@ if mode == -1:
                 # Age plots
                 agePlot, ax = bpassPlotter.agePlots(imf, mtl, sinbin, False)
                 #ax.set_title(f"Age/SN Rate: {sinbin}-imf{imf}.z{mtl}")
+                mtl1 = mtl
+                if 'em' in mtl:
+                    mtl1 = f'1e-{mtl[2]}'
+                else: 
+                    mtl1 = f"0.{mtl1}"
+                ax.set_title(f"Z = {mtl1}", fontsize=18)
                 ageSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Age", f"imf{imf}_{sinbin}_z{mtl}_age.png")
                 agePlot.savefig(ageSavePath, dpi=300)
                 #agePlot.close()

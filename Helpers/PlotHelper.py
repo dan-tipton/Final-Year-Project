@@ -33,7 +33,7 @@ class PlotHelper():
         ax.set_xlabel(self.xAxisName, fontsize=18)
         ax.set_ylabel(self.yAxisName, fontsize=18)
         ax.tick_params(axis='both', labelsize=18)
-        ax.set_title(title)
+        ax.set_title(title, fontsize=22)
 
         # Collect legend items from axes
         handles, labels = ax.get_legend_handles_labels()
@@ -41,6 +41,7 @@ class PlotHelper():
         # Place legend on the figure instead
         fig.legend(handles, labels, loc='lower center', ncol=4, frameon=False,  fontsize=18)
         fig.tight_layout(rect=[0, 0.15, 1, 1])
+        #fig.tight_layout(rect=[0, 0., 1, 1])
 
         return fig, ax
     

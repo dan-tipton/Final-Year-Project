@@ -235,8 +235,8 @@ def curve_md14(redshifts, array, guess=1):
 # generate figure and axes
 def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=None):
     fig, ax = plt.subplots(figsize=(size1,size2))
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel, fontsize=18)
+    ax.set_ylabel(ylabel, fontsize=18)
 
     if logx: 
         ax.set_xscale('log')
@@ -247,15 +247,20 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
     if legendspace is not None:
         fig.subplots_adjust(bottom=legendspace)
 
+    ax.tick_params(axis='both', labelsize=18)
+
     return fig, ax
 
 # set labels for axes 
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22)
+    # tempoararily remove legend 
+    #fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
 
     if gap != None:
-        fig.tight_layout(rect=[0, gap, 1, 1])
+        #fig.tight_layout(rect=[0, gap, 1, 1])
+        # tempoararily remove legend 
+        fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig, ax
 
@@ -278,8 +283,6 @@ def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
     
     redshifts = [0] + redshifts
     lookback_time_grid = cosmo.lookback_time(redshifts).value  # in Gyr
-    #print('redshifts', redshifts)
-    #print('lookbacks', lookback_time_grid)
     redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
     age_to_redshift = interp1d(lookback_time_grid, redshifts, bounds_error=False, fill_value="extrapolate")
 
@@ -325,12 +328,12 @@ def line_fit(x, y):
 def halo_level(snaps):
     
     # set up figures and axes
-    fig_halo_rate, ax_hr = plt_helper(8,7, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
-    fig_halo_density, ax_hrd = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
+    fig_halo_rate, ax_hr = plt_helper(8,6, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
+    fig_halo_density, ax_hrd = plt_helper(8,6, r'Volumetric SFR [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'Volumetric SNR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
     fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
     fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
     fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
-    fig_mass, ax_mass = plt_helper(8, 7, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.17)
+    fig_mass, ax_mass = plt_helper(8, 6, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.17)
 
     all_snrd = []
     all_sfrd = []
@@ -428,11 +431,11 @@ def halo_level(snaps):
     ax_av.plot(x_line, y_line, linestyle='--', color='blue', label=f'Slope={av_slope:.2e}, Intercept={av_intercept:.2e}')
 
     # labels
-    plt_labels(fig_halo_rate, ax_hr, 4)
-    plt_labels(fig_halo_density, ax_hrd, 4)
+    plt_labels(fig_halo_rate, ax_hr, 4, 0.2)
+    plt_labels(fig_halo_density, ax_hrd, 4, 0.2)
     plt_labels(fig_dense, ax_dense, 2)
     plt_labels(fig_av, ax_av, 2)
-    plt_labels(fig_mass, ax_mass, 4)
+    plt_labels(fig_mass, ax_mass, 4, 0.4)
 
     return True
 
@@ -607,7 +610,7 @@ if build == True:
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
-fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'Volumetric SNR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')#, space=0.2)
 fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3)
@@ -816,7 +819,7 @@ plt.close(fig_total_snr)
 def myfunc(x):
   return slope * x + intercept
 
-fig_ratio, ax_ratio = plt_helper(8, 7, "Redshift (z)",  r'Supernova Fraction [%]', logx=False, logy=False, legendspace=0.2)
+fig_ratio, ax_ratio = plt_helper(8, 6, "Redshift (z)",  r'Supernova Fraction [%]', logx=False, logy=False, legendspace=0.2)
 ratios = []
 for idx, item in enumerate(test_dict.items()):
     name = item[0]

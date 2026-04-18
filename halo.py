@@ -194,6 +194,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     handles, labels = axes_bin[0].get_legend_handles_labels()
     fig_bin.legend(handles, labels, loc="lower center", ncol=len(sn_type))
     fig_bin.tight_layout(rect=[0, 0.07, 1, 1])
+    #fig_bin.tight_layout(rect=[0, 0, 1, 1])
     fig_bin.savefig(f"Data/Images/TNG/ratio/mass/reduced/b{png_name}", dpi=300)
     plt.close(fig_bin)
 
@@ -286,7 +287,7 @@ def run_redshift():
 def run_cosmic():
     df = pd.read_csv('Final/Data/all_snapshots_ratio.csv')
 
-    fig, ax = plt.subplots(figsize=(8, 7))
+    fig, ax = plt.subplots(figsize=(8, 6))
     for idx, sn in enumerate(sn_type):
         z = df["Redshift"]
         ratio = df[f'{sn}']
@@ -308,12 +309,13 @@ def run_cosmic():
 
         # combine
         
-    ax.set_xlabel("Redshift")
-    ax.set_ylabel("Supernova Fraction")
+    ax.set_xlabel("Redshift (z)", fontsize=18)
+    ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
+    ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig.tight_layout(rect=[0, 0.1, 1, 1])
+    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic.png", dpi=300)
     return 0
 
