@@ -174,27 +174,30 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
 
         ratio_data[s] = sub_data
-        axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]')
-        axes[i].set_ylabel("Supernova Fraction [%]")
+        axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]', fontsize=18)
+        axes[i].set_ylabel("Supernova Fraction [%]", fontsize=18)
         axes[i].set_xscale('log')
-        axes[i].set_title(f"Redshift={z:.2f}")
+        axes[i].set_title(f"Redshift={z:.2f}", fontsize=18)
+        axes[i].tick_params(axis='both', labelsize=18)
 
-        axes_bin[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]')
-        axes_bin[i].set_ylabel("Supernova Fraction [%]")
+        axes_bin[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]', fontsize=18)
+        axes_bin[i].set_ylabel("Supernova Fraction [%]", fontsize=18)
         axes_bin[i].set_xscale('log')
-        axes_bin[i].set_title(f"Redshift={z:.2f}")
+        axes_bin[i].set_title(f"Redshift={z:.2f}", fontsize=18)
+        axes_bin[i].tick_params(axis='both', labelsize=18)
     
     # legends
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig.tight_layout(rect=[0, 0.1, 1, 1])
+    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    #fig.tight_layout(rect=[0, 0.1, 1, 1])
+    fig.tight_layout(rect=[0, 0, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/all/{png_name}", dpi=300)
     plt.close(fig)
 
     handles, labels = axes_bin[0].get_legend_handles_labels()
-    fig_bin.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig_bin.tight_layout(rect=[0, 0.07, 1, 1])
-    #fig_bin.tight_layout(rect=[0, 0, 1, 1])
+    #fig_bin.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    #fig_bin.tight_layout(rect=[0, 0.07, 1, 1])
+    fig_bin.tight_layout(rect=[0, 0, 1, 1])
     fig_bin.savefig(f"Data/Images/TNG/ratio/mass/reduced/b{png_name}", dpi=300)
     plt.close(fig_bin)
 
