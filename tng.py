@@ -53,7 +53,7 @@ bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
-rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_Err"
 
 # count lines for progress bar
 def count_lines_fast(path):
@@ -70,36 +70,40 @@ def count_lines_fast(path):
 # region Build
 def build_rates(snap):
     # snType: 0: IIP, 1: II-Other, 2: Ib, 3: Ic, 4: Long-GRB, 5: Pair-Instab, 6: Low-mass
-    build_type = "IIP"
-    sn_type = 3
-    position = snapshots.index(snap) + 1
-    input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
-    my_glob = glob.glob(input_path)
+    #build_type = "IIP"
+    #sn_type = 0
+    build_types = {0:"IIP", 1:"II-Other", 2:"Ib", 3:"Ic"}
+    for build, sn in build_types.items():
+        #print(build, sn)
+        position = snapshots.index(snap) + 1
+        input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{snap}/*"
+        my_glob = glob.glob(input_path)
 
-    subhalo_rows = []
-    for file_name in tqdm(my_glob, desc=f"Snapshot {snap}", position=position, leave=False):
-        subhalo_data = bpassAnalysis.subhaloData(file_name, sn_type)#, pbar=pbar)
-        subhalo_rows.append(dict(subhalo_data.items()))
+        subhalo_rows = []
+        for file_name in tqdm(my_glob, desc=f"Snapshot {snap} - {sn}", position=position, leave=False):
+            subhalo_data = bpassAnalysis.subhaloData(file_name, build)#, pbar=pbar)
+            subhalo_rows.append(dict(subhalo_data.items()))
 
-    #print(f"    {len(subhalo_rows)} subhalos with postive rates")
-    subhalo_df = pd.DataFrame(subhalo_rows)
-    subhalo_df.to_csv(f"/Users/dan/Code/FYP/Data/TNG/Rates/{build_type}/snapshot{snap}_rates.csv")
+        #print(f"    {len(subhalo_rows)} subhalos with postive rates")
+        subhalo_df = pd.DataFrame(subhalo_rows)
+        subhalo_df.to_csv(rates_folder + f"/{sn}/snapshot{snap}_rates.csv")
 
     return subhalo_df
 
 # region Cosmic Densities
 # calculate the sfrd and snrd for the top 1000 subhalos at each redshift
-def calculate_densities(snaps):
+def calculate_densities(snaps, rates_folder_type):
 
     redshifts = []
     snrd_box = []
     sfrd_box = []
     snrd_mass = []
     snrd_no_mass = []
+    snrd_box_errs = []
     
     for idx, snap in enumerate(snaps):
         # read rate files
-        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        rates_file = os.path.join(rates_folder_type, f"snapshot{snap}_rates.csv")
         subhalo_df = pd.read_csv(rates_file)
 
         if len(subhalo_df) <= 1:
@@ -121,7 +125,14 @@ def calculate_densities(snaps):
         total_snrd = total_snr / box_size
         snrd_box.append(total_snrd)
 
-        # total SNRD Calculations ( units yr-1 Mpc-3)
+        # error in cosmic 
+        squared_errs = pow(subhalo_df["snr_err"], 2)
+        snrd_box_err = np.sqrt(sum(squared_errs))
+        snrd_box_errs.append(snrd_box_err/box_size)
+
+        print(total_snrd, snrd_box_err/box_size)
+
+        # total SNRD Calculations ( units yr-1 Mpc-3) - Not used 
         total_snr_new = sum(subhalo_df["snr_solar"] * subhalo_df["mass"])
         total_snrd_new = total_snr_new / box_size
         snrd_no_mass.append(total_snrd_new)
@@ -137,7 +148,7 @@ def calculate_densities(snaps):
         total_sfrd = total_sfr / box_size
         sfrd_box.append(total_sfrd)
 
-    return redshifts, snrd_box, sfrd_box, snrd_no_mass, snrd_mass
+    return redshifts, snrd_box, sfrd_box, snrd_no_mass, snrd_mass, snrd_box_errs
 
 #region sfrd (all subhalos)
 def calculated_sfrd():
@@ -325,7 +336,7 @@ def line_fit(x, y):
     return x_line, y_line, m, c
 
 # region plot halo level
-def halo_level(snaps):
+def halo_level(snaps, rates_folder_type):
     
     # set up figures and axes
     fig_halo_rate, ax_hr = plt_helper(8,6, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
@@ -343,7 +354,7 @@ def halo_level(snaps):
 
     for idx, snap in enumerate(snaps):
         # read rate files
-        rates_file = os.path.join(rates_folder, f"snapshot{snap}_rates.csv")
+        rates_file = os.path.join(rates_folder_type, f"snapshot{snap}_rates.csv")
         subhalo_df = pd.read_csv(rates_file)
 
         if len(subhalo_df) <= 1:
@@ -355,6 +366,9 @@ def halo_level(snaps):
         sfrd = subhalo_df['sfrd']*1e-9
         snrd = subhalo_df["snrd"]*1e-9
         ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        #ax_hr.errorbar(subhalo_df['sfr'], subhalo_df["snr"], yerr=subhalo_df["snr_err"], fmt='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        #plt.show()
+        #break 
         ax_hrd.scatter(sfrd, snrd, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
 
         # snr_solar should be calculated as sum(pixel_snr)/sum(mass)
@@ -492,8 +506,8 @@ def imf_scaling(_imf):
     return integral
 
 # region Plot Cosmic Level
-def cosmic_level(snaps, kcc_type):
-    redshifts, snrd, sfrd_1000, snrd_alt, snrd_mass = calculate_densities(snaps)
+def cosmic_level(snaps, kcc_type, rates_folder_type):
+    redshifts, snrd, sfrd_1000, snrd_alt, snrd_mass, snrd_err = calculate_densities(snaps, rates_folder_type)
     sfrd_all, _ = calculated_sfrd()
 
     # order arrays to be ascedning 
@@ -503,6 +517,8 @@ def cosmic_level(snaps, kcc_type):
     rev_sfrd_all= np.array(sfrd_all)[::-1] 
     # snrd
     rev_snrd = np.array(snrd)[::-1]
+    rev_snrd_err = np.array(snrd_err)[::-1]
+
     rev_snrd_alt = np.array(snrd_alt)[::-1]
     rev_snrd_mass = np.array(snrd_mass)[::-1]
 
@@ -512,8 +528,9 @@ def cosmic_level(snaps, kcc_type):
     # this can be applied to the SNRD to get SNRD estimates for the whole box 
     sfrd_scaling = rev_sfrd_all/rev_sfrd_1000
 
-    #print("scaling from top 1000 to all subhalos for sfr", sfrd_scaling)
+    # apply scaling
     rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
+    rev_snrd_1000_scaled_err = rev_snrd_err * sfrd_scaling 
     rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
     rev_snrd_mass_scaled = rev_snrd_mass * sfrd_scaling
 
@@ -543,7 +560,7 @@ def cosmic_level(snaps, kcc_type):
     #kcc_salpeter = supernova_efficiency(imf.salpeter, kcc_type)
     #kcc_chabrier_sys = supernova_efficiency(imf.chabrierSystem, kcc_type)
 
-    print(' CCSN', kcc_type, kcc_chabrier)
+    #print(' CCSN', kcc_type, kcc_chabrier)
     csnrh_chabrier = csfrh * kcc_chabrier
     #csnrh_salpeter = csfrh * kcc_salpeter
     #csnrh_chabrier_sys = csfrh * kcc_chabrier_sys
@@ -552,7 +569,8 @@ def cosmic_level(snaps, kcc_type):
     # use new units snrd in yr-1 Mpc-3 and divide by kcc (Mo-1) gets Mo yr-1 Mpc-3 (SFRD)
     csfrh_kcc_chabrier = md14_snrd_scaled / kcc_chabrier
     csfrh_kcc_chabrier_raw = rev_snrd_1000_scaled / kcc_chabrier
-    print(' SFR', rev_snrd_1000_scaled[7])
+    csfrh_kcc_chabrier_raw_err = rev_snrd_1000_scaled_err / kcc_chabrier
+    #print(' SFR', rev_snrd_1000_scaled[7])
 
     artificial = 4 * md14_snrd_scaled / kcc_chabrier
 
@@ -590,7 +608,7 @@ def cosmic_level(snaps, kcc_type):
     plt_labels(fig_csfrh, ax_csfrd, 2)
 
     #return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
-    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000, mf17, nv19
+    return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000, mf17, nv19, rev_snrd_1000_scaled_err, csfrh_kcc_chabrier_raw_err
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # region Build
@@ -619,12 +637,13 @@ fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 
 total_sfr = []
-total_snr = []
+total_snr_arr = []
+total_snr_err_arr = []
 
 test_dict = {}
 
 for i, sn_type in enumerate(all_sn_types):
-    rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates" + f"/{sn_type}"
+    rates_folder_type = rates_folder + f"/{sn_type}"
     print(sn_type)
     if sn_type in ["IIP"]:
         kcc_type = 20
@@ -636,8 +655,8 @@ for i, sn_type in enumerate(all_sn_types):
         kcc_type = None
 
     # call functions to get rates
-    halo_level(snapshots)
-    snrd, sfrh, snrd_md14_, sfrh_md14, sfrh_halos, sfrh_1000, sfrh_mf17, sfrh_nv19 = cosmic_level(snapshots, kcc_type)
+    halo_level(snapshots, rates_folder_type) # dont need halo at the moment 
+    snrd, sfrh, snrd_md14_, sfrh_md14, sfrh_halos, sfrh_1000, sfrh_mf17, sfrh_nv19, snrd_err, sfrh_err  = cosmic_level(snapshots, kcc_type, rates_folder_type)
 
     # sum the sf and sn rates to get a total
     if len(total_sfr) == 0:
@@ -645,10 +664,17 @@ for i, sn_type in enumerate(all_sn_types):
     else:
         total_sfr = total_sfr + sfrh
 
+    """
     if len(total_snr) == 0:
         total_snr = snrd
+        total_snr_err = snrd_err
     else:
         total_snr = total_snr + snrd
+        total_snr_err = total_snr_err + snrd_err
+    """
+
+    total_snr_arr.append(snrd)
+    total_snr_err_arr.append(snrd_err)
 
     print(' SNR:', ', '.join(f'{s * 10**4:.4f}' for s in snrd))
     #print(' Total SNR:', total_snr[7])
@@ -660,11 +686,17 @@ for i, sn_type in enumerate(all_sn_types):
             plt.figure(fig_num).savefig(f"Data/Images/TNG/final/{sn_type}/{plot_names[idx]}.png", dpi=300)
             plt.close(curr_fig)
 
-    ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}', color=sn_colours[i])
+    ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}', color=sn_colours[i], zorder=10)
+    ax_types1.errorbar(rev_redshifts, snrd, yerr=snrd_err, color='black', capsize=5, zorder=5)
     ax_types2.plot(rev_redshifts, sfrh, label=f'{sn_type}', color=sn_colours[i])
     test_dict[sn_type] = [sfrh, snrd]
 
+total_snr = sum(total_snr_arr)
+total_snr_err = np.sqrt(sum(total_snr_err_arr))
+total_snr_err = sum(total_snr_err_arr)
+print('here', total_snr, total_snr_err)
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
+ax_types1.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black', capsize=5, zorder=5)
 ax_types2.plot(rev_redshifts, total_sfr, label=f'Total', linestyle='--', color=sn_colours[4])
 plt_labels(fig_types1, ax_types1, 3)
 plt_labels(fig_types2, ax_types2, 3)
@@ -748,6 +780,7 @@ ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Current Study (Curve Fi
 
 # scatter
 ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black', zorder=100)
+ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5)#, marker='D', zorder=90)
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
 # plot data points

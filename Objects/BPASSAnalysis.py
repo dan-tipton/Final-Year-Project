@@ -413,7 +413,7 @@ class BPASSAnalysis():
             # generate normal dist and randomly select a rate
             normal = stats.normalDist(snRate, std)
             randomRate = random.choice(normal)
-            print(randomRate)
+            #print(randomRate)
 
             # check that the normal distribution has positive values
             if np.array(normal).max() < 0:
@@ -512,14 +512,17 @@ class BPASSAnalysis():
             sn_rate_data['Halo_Volume'] = row['halo_volume']
             sn_rate_data['Number_of_Subhalos'] = row['number_of_subhalos']
 
-
+            #print('Items', sn_rate_data.items())
             result_rows.append(dict(sn_rate_data.items()))
             i += 1
             if pbar is not None:
                 pbar.update(1)
 
         all_results_df = pd.DataFrame(result_rows)
-        all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Halo_ID', 'Halo_SFR', 'Halo_Volume', 'Number_of_Subhalos', 'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
+        all_results_df = all_results_df.reindex(columns=['x', 'y', 'Redshift', 'Halo_ID', 
+                                                         'Halo_SFR', 'Halo_Volume', 'Number_of_Subhalos', 
+                                                         'Mass', 'Age_Myr', 'Age_Log(yrs)', 'Z', 'ccSNRate', 
+                                                         'IMF', 'ccSNe', 'Mean', 'Std', 'FWHM'])
          
         # POST BPASS UPDATE 
         # ccSNRate now gives an event rate in [yr-1]
@@ -540,6 +543,26 @@ class BPASSAnalysis():
         mass = sum(all_results_df["Mass"])
         z = all_results_df["Redshift"].iloc[0]
         subhalo_id = all_results_df['Halo_ID'].iloc[0]
+        NumSubhalo =  all_results_df['Number_of_Subhalos'] # is an array??
+
+        # normal distribution details (all arrays)
+        stds =  all_results_df['Std']
+        means =  all_results_df['Mean']
+        fwhms = all_results_df['FWHM']
+
+        # errors - square of the sum of standard deviations squared
+        # error in the basic 'subhalo_snr'
+        squared_stds = pow(stds, 2)
+        error = np.sqrt(sum(squared_stds))
+        
+        # error in the solar mass correcte snr
+        # division is applied before summation
+        squared_stds_solar = pow(stds/all_results_df["Mass"], 2)
+        error_solar = np.sqrt(sum(squared_stds_solar))
+        
+        # error in the voliumetric rate
+        # division is applied after summation
+        error_vol = error/halo_volume
 
         subhalo_dataframe = {
             'id': subhalo_id,
@@ -551,6 +574,10 @@ class BPASSAnalysis():
             'mass':mass,
             'z': z, 
             'halo_volume': halo_volume,
+            'snr_err': error,
+            'snr_solar_err': error_solar,
+            'snrd_err': error_vol,
+
         }
         return subhalo_dataframe
         
