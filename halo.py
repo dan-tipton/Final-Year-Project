@@ -39,6 +39,13 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error,mean_squared_error, root_mean_squared_error
 from scipy import stats
+import scipy.optimize as sco
+
+from Helpers.AICHelper import AICHelper
+from Helpers.PolyHelper import PolyHelper
+
+aich = AICHelper()
+poly = PolyHelper()
 
 base = os.getcwd()
 rate_base = os.path.join(base, 'Data/TNG/Rates')
@@ -299,18 +306,23 @@ def run_cosmic():
         slope, intercept, r, p, std_err = stats.linregress(z, ratio)
         regress = linear(z, slope, intercept)
 
+        c, e, o, y, x = apply_aic(z, ratio, err)
+        #print(f'AIC: order {o}')
+        #print(f'    {c}')
+       # print(f'    {e}')
+
         ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
         ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
         ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
         ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
+
+        ax.plot(x, y, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
 
         # calculate average across all redshifts
         sn_ratio = np.mean(ratio)
         # calculate error in average across all redhisfts
         sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
         print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
-
-        # combine
         
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
@@ -322,9 +334,74 @@ def run_cosmic():
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic.png", dpi=300)
     return 0
 
-run_redshift()
+
+def apply_aic(x, y, errs):
+    # Maximum order of magnitude is 4 (quartic)
+    prevCoeffs = [0, 0, 0, 0, 0]
+    prevErrCoeffs = [0, 0, 0, 0, 0]
+    #xPlot = np.arange(min(x), max(x), 0.1)
+    xPlot = np.linspace(min(x), max(x), 300)
+    selectedOrder = 0
+
+    # set up first aic 
+    # linear 
+    p0 = np.polyfit(x, y, 1).tolist()
+    intial = p0[0] * x + p0[1]
+    intial_plot = p0[0] * xPlot + p0[1]
+    rss = aich.rss(y, intial)
+    prevAIC = aich.aic(2, len(intial_plot), rss)
+
+    print(xPlot)
+    
+    #return p0, 0, 1, intial_plot, xPlot
+
+    for order in range(2,5):
+        selectedOrder += 1
+        p0 = np.polyfit(x, y, order).tolist()
+        while len(p0) <= order:
+            p0.append(0)
+
+        # Scipy Curve fit 
+        model = lambda x, *params : poly.polynomialFunc(order, x, np.array(params))
+        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
+        errCoeffs = np.sqrt(list(poly.getDiagonals(matrix))[0])      
+
+        while len(coeffs) < 5:
+            coeffs = np.append(0, coeffs)
+            errCoeffs = np.append(0, errCoeffs)
+        
+        # determine polynomial values
+        polyList = poly.polynomialCalc(coeffs, x)
+        polyPlot = poly.polynomialCalc(coeffs, xPlot)
+
+        # apply AIC to determine best order
+        rss = aich.rss(y, polyList)
+        aic = aich.aic(order + 1, len(polyPlot), rss)
+        prob = aich.probability(prevAIC, aic)
+
+        # make choice
+        print(f"AIC: Prev {prevAIC}, Curr {aic}, Probability: {prob}")
+        print(f"    {coeffs}")
+        if prob > 0.95:
+            # reject more complex model (previous model is better)
+            # return the previous order's coeffs
+            coeffs = prevCoeffs
+            errCoeffs = prevErrCoeffs
+            polyList = poly.polynomialCalc(coeffs, x)
+            polyPlot = poly.polynomialCalc(coeffs, xPlot)
+            selectedOrder = selectedOrder - 1
+            return coeffs, errCoeffs, selectedOrder, polyPlot, xPlot
+        # else accept more complex model (current model is better)
+        # ie do nothing and continue to next order
+        prevAIC = aic
+        prevCoeffs = coeffs
+        prevErrCoeffs = errCoeffs
+
+    return coeffs, errCoeffs, selectedOrder, polyPlot, xPlot
+
+#run_redshift()
 run_cosmic()
-animate_plotter(snapshots, True)
+#animate_plotter(snapshots, True)
 
 
 """
