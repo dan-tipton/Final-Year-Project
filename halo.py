@@ -41,11 +41,12 @@ from sklearn.metrics import mean_absolute_error,mean_squared_error, root_mean_sq
 from scipy import stats
 import scipy.optimize as sco
 from pysr import PySRRegressor
+from itertools import combinations
 
 from Helpers.AICHelper import AICHelper
 from Helpers.PolyHelper import PolyHelper
 
-aich = AICHelper()
+aic = AICHelper()
 poly = PolyHelper()
 
 base = os.getcwd()
@@ -349,38 +350,16 @@ def run_cosmic():
         #slope, intercept, r, p, std_err = stats.linregress(z, ratio)
         #regress = linear(z, slope, intercept)
 
-        x_aic, y_aic = apply_aic(x, y, e)
-
-        p1 = np.polyfit(x, y, 1)
-        p2 = np.polyfit(x, y, 2)
-        p3 = np.polyfit(x, y, 3)
-        p4 = np.polyfit(x, y, 4)
-
-        p1_fit = poly.polynomialCalc(p1, x_lin)
-        p2_fit = poly.polynomialCalc(p2, x_lin)
-        p3_fit = poly.polynomialCalc(p3, x_lin)
-        p4_fit = poly.polynomialCalc(p4, x_lin)
+        x_aic, y_aic = aic.apply_aic(x, y, e)
 
         ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
         ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
         
         #ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
         #ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
-        """
-        #ax.plot(x_lin, y_pred, color=colors[idx], linewidth=1, zorder=40, label=f"{sn} PySr") 
-        #ax.plot(x_lin, y_pred, color='black', linewidth=2, zorder=30) 
-
-        #ax.plot(x_lin, y_c3, color=colors1[idx], linewidth=2, zorder=20, label=f"{sn} 3") 
-        #ax.plot(x_lin, y_c5, color=colors2[idx], linewidth=2, zorder=20, label=f"{sn} 5") 
-        #ax.plot(x_lin, y_c8, color=colors3[idx], linewidth=2, zorder=20, label=f"{sn} 8") 
-        #ax.plot(x_lin, y_c8, color='black', linewidth=3, zorder=10, label=f"{sn} 8")
-        """
 
         ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
         ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
-        ax.plot(x_lin, p2_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 2") 
-        ax.plot(x_lin, p3_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 3") 
-        #ax.plot(x_lin, p4_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 4") 
 
         # calculate average across all redshifts
         sn_ratio = np.mean(ratio)
@@ -390,31 +369,34 @@ def run_cosmic():
         
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
-    ax.set_ylim(0,100)
+    #ax.set_ylim(0,100)
     ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
-    fig.tight_layout(rect=[0, 0.2, 1, 1])
-    fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic.png", dpi=300)
+    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0.3, 1, 1])
+    fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
     return 0
 
-
-def apply_aic(x, y, errs):
+'''
+def apply_aic(x, y, errs, additional_checks=False):
     # Maximum order of magnitude is 4 (quartic)
-    prevCoeffs = [0, 0, 0, 0, 0]
-    prevErrCoeffs = [0, 0, 0, 0, 0]
     x_plot = np.linspace(min(x), max(x), 300)
-    selectedOrder = 1
 
     # set up first aic 
     # linear 
     p0 = np.polyfit(x, y, 1)
     initial = poly.polynomialCalc(p0, x)
     rss = aich.rss(y, initial)
+    max_aic = aich.aic(2, len(y), rss)
     prev_aic = aich.aic(2, len(y), rss)
     prev_plot = poly.polynomialCalc(p0, x_plot)
 
+    selected_plot = prev_plot
+    aic_values = []
+    aic_values.append(max_aic)
+
+    final_order = 1
     for order in range(2,5):
         # initial guess with polyfit
         coeffs = np.polyfit(x, y, order)
@@ -427,18 +409,62 @@ def apply_aic(x, y, errs):
         rss = aich.rss(y, poly_values)
         aic = aich.aic(order + 1, len(y), rss)
         prob = aich.probability(prev_aic, aic)
+        aic_values.append(aic)
         
-        print(f"    Current Order {order}\n       Simple:  {prev_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
+        #print(f"    Current Order {order}\n       Simple:  {max_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
 
         if prob > 0.95:
             # reject complex model 
-            return x_plot, prev_plot
+            final_order = order - 1
+            pass
+            #return x_plot, prev_plot
         else:
             # accept complex model, move on 
+            final_order = order
             prev_aic = aic
-            prev_plot = poly_plot
+            selected_plot = poly_plot
 
-    return x_plot, poly_plot
+    if additional_checks == True:
+        # check more combinations than just against the linear fit
+        for i, j in combinations(range(len(aic_values)), 2):
+            max_a = aic_values[i]
+            min_a = aic_values[j]
+            prob = aich.probability(max_a, min_a)
+            #print(f'Order:{i+1}, {max_a}, Order:{j+1}, {min_a}, Prob:{prob}')  # apply your formula here
+
+            if prob < 0.95:
+                # check against higher order
+                prob = aich.probability(aic_values[j], aic_values[j+1])
+                if prob < 0.95:
+                    # accept as new again
+                    coeffs = np.polyfit(x, y, j+2)
+                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
+                    final_order = j+2
+                    #print(f'Accepted order - {j+2}')
+                else:
+                    # accept current j as the new order 
+                    coeffs = np.polyfit(x, y, j+1)
+                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
+                    final_order = j+1
+                    #print(f'Accepted order - {j+1}')
+                break
+                
+
+            # check higher orders against original
+            if (j-i > 1) and (prob < 0.95):
+                # order difference is greater than 1, and probability is good
+                # check the higher order against one lower to make sure it is better
+                prob = aich.probability(aic_values[i+1], min_a)
+                if prob < 0.95:
+                    # accept this as the new order 
+                    coeffs = np.polyfit(x, y, j+1)
+                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
+                    final_order = j+1
+                    #print(f'Accepted order - {j+1}')
+                    break
+
+    print(f'Final Order: {final_order}')
+    return x_plot, selected_plot
 
     """
     probs = []
@@ -487,6 +513,7 @@ def apply_aic(x, y, errs):
     """
 
     return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
+'''
 
 #run_redshift()
 run_cosmic()

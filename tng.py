@@ -13,6 +13,9 @@ import astropy.units as u
 from Objects.BPASSAnalysis import BPASSAnalysis
 from Objects.BPASSDataFormatter import BPASSDataFormatter
 from Objects.IMF import IMF
+from Helpers.AICHelper import AICHelper
+aic = AICHelper()
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from multiprocessing import RLock
@@ -953,14 +956,19 @@ for idx, item in enumerate(test_dict.items()):
     slope, intercept, r, p, std_err = stats.linregress(rev_redshifts, y)
     mymodel = list(map(myfunc, x))
 
-    ax_ratio.plot(x, mymodel, color='black',  linewidth=2, zorder=20)
-    ax_ratio.plot(x, mymodel, color=sn_colours[idx], label=f"{name} lineregress", linewidth=1, zorder=30)
+    x_aic, y_aic = aic.apply_aic(rev_redshifts, y)
+    ax_ratio.plot(x_aic, y_aic, color=sn_colours[idx], linewidth=1, zorder=30, label=f"{name} AIC")
+    ax_ratio.plot(x, y_aic, color='black',  linewidth=2, zorder=20)
+
+    #ax_ratio.plot(x, mymodel, color='black',  linewidth=2, zorder=20)
+    #ax_ratio.plot(x, mymodel, color=sn_colours[idx], label=f"{name} lineregress", linewidth=1, zorder=30)
     #ax_ratio.errorbar(rev_redshifts, y, yerr=std_error, color='black', fmt='D', capsize=5, zorder=30)
     ax_ratio.scatter(rev_redshifts, y, label=name, color=sn_colours[idx], marker='D', edgecolors='black', zorder=40)
 
-plt_labels(fig_ratio, ax_ratio, 4, 0.07)
+#plt_labels(fig_ratio, ax_ratio, 4, 0.07)
+fig_ratio.tight_layout(rect=[0, 0, 1, 1])
 fig_ratio.savefig("Data/Images/TNG/final/cosmic/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))
 
-for group in zip(*fracs):
-    print(" & ".join(str(x) for x in group))
+#for group in zip(*fracs):
+    #print(" & ".join(str(x) for x in group))
