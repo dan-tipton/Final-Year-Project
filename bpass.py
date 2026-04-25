@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 3
+mode = 2.1
 
 # region Imports
 import pandas as pd
@@ -249,8 +249,12 @@ elif mode == 1:
 elif mode == 2:
     for imf in bpass.imfNames:
         print(f"BPASS Data: imf{imf}, binary")
-        bpassAnalysis.generateAllCoeffs(imf, 'bin', plot=False)
+        bpassAnalysis.generateAllCoeffs(imf, 'bin')
     #ceoffdf = myDataExtractor.generateCoeffs('_chab100', 'bin', 7.1, plot=True)
+
+elif mode == 2.1:
+    print(f"BPASS Data: imf_chab100, binary")
+    bpassAnalysis.generateAllCoeffs('_chab100', 'bin')
 
     #myDataExtractor.plotAllPolynomials('_chab100', 'bin')
 
@@ -260,7 +264,7 @@ elif mode == 2.4:
     #bpassAnalysis.generateCoeffs('170_100', 'bin', 7.4, True)
 
 elif mode == 2.5:
-    bpassAnalysis.generateCoeffs('_chab100', 'bin', 7.4, True)
+    bpassAnalysis.generateCoeffs('_chab100', 'bin', 6.8, True)
     #bpassAnalysis.generateCoeffs('170_100', 'bin', 7.4, True)
 
 

@@ -350,7 +350,9 @@ def run_cosmic():
         #slope, intercept, r, p, std_err = stats.linregress(z, ratio)
         #regress = linear(z, slope, intercept)
 
-        x_aic, y_aic = aic.apply_aic(x, y, e)
+        x_aic, y_aic, coeffs, errs = aic.apply_aic(x, y, e)
+        print(f'    Coeffs: {coeffs}')
+        print(f'    Errors: {errs}')
 
         ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
         ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)

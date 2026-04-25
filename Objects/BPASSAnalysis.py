@@ -33,6 +33,9 @@ from Helpers.PlotHelper import PlotHelper
 from Helpers.PandasHelper import PandasHelper
 from Helpers.AICHelper import AICHelper
 from Helpers.StatsHelper import StatsHelper
+from Helpers.PolyHelper import PolyHelper
+poly = PolyHelper()
+aicHelper = AICHelper()
 
 
 class BPASSData():
@@ -130,7 +133,7 @@ class BPASSAnalysis():
         headers = df.columns.values[2:]
 
         # Array of all metallicities in BPASS as numbers (used for plotting x axis)
-        allMtls = [1e-5, 1e-4, 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.008, 0.010, 0.020, 0.030, 0.040]
+        allMtls = [1e-5, 1e-4, 0.001, 0.002, 0.003, 0.004, 0.006, 0.008, 0.010, 0.014, 0.020, 0.030, 0.040]
         # keep plot colours conistsent as there is a plt.plot and plt.errorbar
         #colours = ['blue', 'red', 'orange', 'pink', 'green', 'purple', 'brown', 'black', 'cyan', 'lime', 'gold', 'navy']
         colours = ["#000000", '#FF5733', '#33FF57', '#3357FF', "#FFD012", "#544051", "#FF4FD6", "#933823", "#202FB7"]
@@ -145,113 +148,40 @@ class BPASSAnalysis():
                 snRates = np.array(df[header])
                 errSnRates = np.array(df['Err_'+header])
 
-                # determine the weights used for polyfit error
-                allWeights = []
-                for _, row in df.iterrows():
-                    if row[header] == 0:
-                        allWeights.append(0)
-                    else:
-                        allWeights.append(1/row[header])
-
-                """
-                # Mask to exclude zero or negative rates
-                mask = snRates > 0
-                # Apply mask to all arrays
-                maskedRates = snRates[mask]
-                maskedMtls = np.array(allMtls)[mask]
-                maskedWeights = np.array(allWeights)[mask]
-                maskedErrs = errSnRates[mask]
-                """
-
                 mask = snRates > 0                     
                 maskedRates = snRates[mask]
                 maskedMetals = np.array(allMtls)[mask]
                 maskedErrs = errSnRates[mask]
-                maskedErrs[maskedErrs == 0] = 1e-20
+                maskedErrs[maskedErrs == 0] = 1e-5
+
+                errSnRates[errSnRates == 0] = 1e-10
 
                 # Apply polynomial fit and use AIC statistics to determine order of polynomial
                 # Maximum order of magnitude is 4 (quartic)
-                prevAIC = 0
-                prevCoeffs = [0, 0, 0, 0, 0]
-                prevErrCoeffs = [0, 0, 0, 0, 0]
-                polyPlot = []
-                for order in range(1,5):
+                x_aic, y_aic, aic_coeffs, aic_errs = aicHelper.apply_aic(maskedMetals, maskedRates, errs=maskedErrs)
+                #x_aic, y_aic, aic_coeffs, aic_errs = aicHelper.apply_aic(allMtls, snRates, errs=errSnRates)
 
-                    """
-                    Numpy Poly Fit
+                coeffs = aic_coeffs
+                errCoeffs = aic_errs
 
-                    # must have at least order + 1 data points to fit the polynomial
-                    orderLimit = order + 1
-                    if len(maskedMtls) > orderLimit and len(maskedWeights) > orderLimit and len(maskedRates) > orderLimit:
-                        coeffs, matrix = np.polyfit(maskedMtls, maskedRates, order, cov=True, w=maskedWeights)
-                        errCoeffs = np.sqrt(list(self.getDiagonals(matrix))[0])
-                    else: 
-                        coeffs = [0, 0, 0, 0, 0]
-                        errCoeffs = [0, 0, 0, 0, 0]
+                while len(coeffs) < 5:
+                    coeffs = np.insert(coeffs, 0, 0)
+                    errCoeffs = np.insert(errCoeffs, 0, 0)
 
-                    #for orders of polynomial less than 4 fill coeffs and errCoeffs with zeros (up to 5 terms)
-                    while len(coeffs) < 5:
-                        coeffs = np.append(0, coeffs)
-                        errCoeffs = np.append(0, errCoeffs)
-                    """
-
-                    orderLimit = order + 1
-                    if len(maskedRates) > orderLimit:
-                        #slope, intercept, r, p, std_err = scs.linregress(np.array(allMtls), np.array(snRates))
-                        #p0 = [slope, intercept]
-                        p0 = np.polyfit(maskedMetals, maskedRates, order).tolist()
-                        while len(p0) <= order:
-                            p0.append(0)
-
-                        # Scipy Curve fit 
-                        model = lambda x, *params : self.polynomialFunc(order, x, np.array(params))
-                        coeffs, matrix = sco.curve_fit(model, maskedMetals, maskedRates, p0, maskedErrs, absolute_sigma=True, nan_policy='omit', method='trf')
-                        errCoeffs = np.sqrt(list(self.getDiagonals(matrix))[0])
-                    else: 
-                        coeffs = [0, 0, 0, 0, 0]
-                        errCoeffs = [0, 0, 0, 0, 0]            
-
-                    while len(coeffs) < 5:
-                        coeffs = np.append(0, coeffs)
-                        errCoeffs = np.append(0, errCoeffs)
-
-                    # determine polynomial values
-                    polyList = self.polynomialCalc(coeffs, maskedMetals)
-                    xPlot = np.arange(1e-5, 0.040, 0.0001)
-                    polyPlot = self.polynomialCalc(coeffs, xPlot)
-
-                    # apply AIC to determine best order
-                    aicHelper = AICHelper()
-                    rss = aicHelper.rss(maskedRates, polyList)
-                    aic = aicHelper.aic(order + 1, len(polyPlot), rss)
-                    prob = aicHelper.probability(prevAIC, aic)
-
-                    #print(f"AIC {header} Prev {prevAIC}, Curr {aic}, Probability: {prob}")
-                    if prob > 0.95:
-                        # reject more complex model (previous model is better)
-                        # return the previous order's coeffs
-                        coeffs = prevCoeffs
-                        errCoeffs = prevErrCoeffs
-                        polyList = self.polynomialCalc(coeffs, maskedMetals)
-                        polyPlot = self.polynomialCalc(coeffs, xPlot)
-                        break
-                    # else accept more complex model (current model is better)
-                    # ie do nothing and continue to next order
-                    prevAIC = aic
-                    prevCoeffs = coeffs
-                    prevErrCoeffs = errCoeffs
 
                 # Print coefficents is showing plot for comparisons
                 if plot:
                     print(f"    {header}")
                     print(f"        Coeffs: {' '.join(str(coeff) for coeff in coeffs)}")
 
-                numDataPoints = len(maskedRates)
+                numDataPoints = len(maskedMetals)
                 freeParams = np.count_nonzero(np.array(coeffs))
+                #print(coeffs)
+                poly_values = poly.polynomialCalc(coeffs, maskedMetals)
                 # Find std deviation of points from fit if valid fir
                 if numDataPoints > 0 and freeParams > 0:
                     # residula = actual data - poly fit data
-                    res = np.array(maskedRates) - np.array(polyList)
+                    res = np.array(maskedRates) - np.array(poly_values)
                     std = np.sqrt(np.sum(pow(res,2)) / (numDataPoints - freeParams))
                 else:
                     std = 0
@@ -273,10 +203,11 @@ class BPASSAnalysis():
                 })
 
                 # plotting
-                ax.plot(xPlot, polyPlot, label=header, color=colours[i])
+                #ax.plot(xPlot, polyPlot, label=header, color=colours[i])
+                ax.plot(x_aic, y_aic, label=header, color=colours[i])
                 #ax.scatter(allMtls, snRates, color=colours[i])#, yerr=errSnRates, fmt='o', label="_nolegend_", color=colours[i])
-                ax.errorbar(allMtls, snRates, yerr=errSnRates, fmt='D', label="_nolegend_", color=colours[i], capsize=5, zorder=10)
-                ax.scatter(allMtls, snRates, color=colours[i], marker='D', edgecolors='black', zorder=20)
+                ax.errorbar(maskedMetals, maskedRates, yerr=maskedErrs, fmt='D', label="_nolegend_", color=colours[i], capsize=5, zorder=10)
+                ax.scatter(maskedMetals, maskedRates, color=colours[i], marker='D', edgecolors='black', zorder=20)
                 #ax.set_yscale('log')
                 #myPlot.subplots_adjust(bottom=0.2, right=0.95)
                 ax.set_ylabel(r'Event Rate [$\mathrm{10^{-4} yr^{-1}}$]', fontsize=18)
@@ -310,11 +241,11 @@ class BPASSAnalysis():
         #print(f"Saved {filename} CSV file to '{self.coeffPath}'")
         return coeffdf
     
-    def generateAllCoeffs(self, imf, sinbin, plot:bool):
+    def generateAllCoeffs(self, imf, sinbin):
         # generate coeffs for all ages for given imf and sinbin
         ageDataframes = self.generateAgeSpecific(imf, sinbin)
         for idx, age in enumerate(ageDataframes.keys()):
-            self.generateCoeffs(imf, sinbin, age, plot)
+            self.generateCoeffs(imf, sinbin, age, False)
         print(f"    Saved {idx + 1} coefficient CSV files to '{self.coeffPath}'")
 
     
