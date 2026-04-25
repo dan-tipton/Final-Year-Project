@@ -411,28 +411,13 @@ def apply_aic(x, y, errs):
     # linear 
     p0 = np.polyfit(x, y, 1)
     initial = poly.polynomialCalc(p0, x)
-    initial_plot = poly.polynomialCalc(p0, x_plot)
     rss = aich.rss(y, initial)
-    prevAIC = aich.aic(2, len(y), rss)
-
-    min_aic = aich.aic(2, len(y), rss)
-    orders = range(1, 4)
-    aic_values = []
+    prev_aic = aich.aic(2, len(y), rss)
+    prev_plot = poly.polynomialCalc(p0, x_plot)
 
     for order in range(2,5):
-        selectedOrder += 1
         # initial guess with polyfit
-         = np.polyfit(x, y, order)
-        
-        # Scipy Curve fit 
-        model = lambda x, *params : poly.polynomialFunc(order, x, np.array(params))
-        #coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
-        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs)
-        errCoeffs = np.sqrt(list(poly.getDiagonals(matrix))[0])
-
-        #coeffs = p0
-
-        print(f'    NumPy:{coeffs}\n    SciPy:{coeffs}')
+        coeffs = np.polyfit(x, y, order)
         
         # determine polynomial values
         poly_values = poly.polynomialCalc(coeffs, x)
@@ -441,11 +426,21 @@ def apply_aic(x, y, errs):
         # apply AIC to determine best order
         rss = aich.rss(y, poly_values)
         aic = aich.aic(order + 1, len(y), rss)
-        #prob = aich.probability(prevAIC, aic)
+        prob = aich.probability(prev_aic, aic)
         
-        aic_values.append(aic)
-        #print(f"Current Order{order}\n   RSS: {rss}\n   Simple:  {prevAIC} \n   Comples:  {aic} \n   Prob:  {prob}")
+        print(f"    Current Order {order}\n       Simple:  {prev_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
 
+        if prob > 0.95:
+            # reject complex model 
+            return x_plot, prev_plot
+        else:
+            # accept complex model, move on 
+            prev_aic = aic
+            prev_plot = poly_plot
+
+    return x_plot, poly_plot
+
+    """
     probs = []
     for idx, aic in enumerate(aic_values):
         prob = aich.probability(min_aic, aic)
@@ -470,6 +465,8 @@ def apply_aic(x, y, errs):
         y_plot = initial_plot
 
     return x_plot, y_plot
+    """
+    
     """
         # make choice
         if prob > 0.95:
