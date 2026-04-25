@@ -40,6 +40,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error,mean_squared_error, root_mean_squared_error
 from scipy import stats
 import scipy.optimize as sco
+from pysr import PySRRegressor
 
 from Helpers.AICHelper import AICHelper
 from Helpers.PolyHelper import PolyHelper
@@ -55,6 +56,8 @@ cols_suffix = ["sfr_", "sfrd_", "snr_", "snrs_", "snrd_"]
 cols_suffix_2 = ["sfr_", "snr_", "snrs_"]
 colors = ['#FF5733', '#33FF57', '#3357FF', "#FFD012"]
 colors1 = ["#C13D20", "#1EC93E", "#1D36A7", "#C7A20F"]
+colors2 = ["#8C250E", "#128928", "#091C71", "#9B7C00"]
+colors3 = ["#E2755C", "#8AF49E", "#8298FA", "#FDE588"]
 
 def linear(x, slope, intercept):
     return slope * x + intercept
@@ -173,7 +176,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             slope, intercept, r, p, std_err = stats.linregress(z_log.ravel(), avg_ratio)
             y_pred = myfunc(z_log, slope, intercept)
             #regress = linear(z_log, slope, intercept)
-            print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
+            #print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
             
             axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
             axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
@@ -294,29 +297,90 @@ def run_redshift():
 
     return all_data
 
+
+model = PySRRegressor(
+    niterations=40,
+    binary_operators=["+", "-", "*", "/", "pow"],
+    #unary_operators=["exp", "log"],
+    model_selection="best",
+    parsimony=5,
+    maxsize=10,
+)
+    
 def run_cosmic():
     df = pd.read_csv('Final/Data/all_snapshots_ratio.csv')
+    with open("models.txt", "w") as f:
+        f.write("Models\n")
+
+    with open("complexity8.txt", "w") as f:
+        f.write("Complexity 8\n")
 
     fig, ax = plt.subplots(figsize=(8, 6))
     for idx, sn in enumerate(sn_type):
+        print(sn)
         z = df["Redshift"]
         ratio = df[f'{sn}']
         err = df[f'{sn}_err']
-        
-        slope, intercept, r, p, std_err = stats.linregress(z, ratio)
-        regress = linear(z, slope, intercept)
 
-        c, e, o, y, x = apply_aic(z, ratio, err)
-        #print(f'AIC: order {o}')
-        #print(f'    {c}')
-       # print(f'    {e}')
+        #x = np.array(z).reshape(-1, 1)
+        x = np.array(z)
+        y = np.array(ratio)
+        e = np.array(err)
+        x_lin = np.linspace(min(x),max(x),300)
+        
+        """
+        model.fit(x, y)
+        best = model.get_best()
+        best_func = model.get_best()["lambda_format"]
+        y_pred = best_func(x_lin)
+
+        with open("models.txt", "a") as f:
+            f.write(str(model))
+            f.write(str(best))
+
+        with open("best_models.txt", "a") as f:
+            f.write(f"{best["equation"]}\n")
+        
+        complex_3 = model.equations_.iloc[1]["lambda_format"]
+        complex_5 = model.equations_.iloc[2]["lambda_format"]
+        complex_8= model.equations_[model.equations_["complexity"] == 8]["lambda_format"]
+        """
+
+        #slope, intercept, r, p, std_err = stats.linregress(z, ratio)
+        #regress = linear(z, slope, intercept)
+
+        x_aic, y_aic = apply_aic(x, y, e)
+
+        p1 = np.polyfit(x, y, 1)
+        p2 = np.polyfit(x, y, 2)
+        p3 = np.polyfit(x, y, 3)
+        p4 = np.polyfit(x, y, 4)
+
+        p1_fit = poly.polynomialCalc(p1, x_lin)
+        p2_fit = poly.polynomialCalc(p2, x_lin)
+        p3_fit = poly.polynomialCalc(p3, x_lin)
+        p4_fit = poly.polynomialCalc(p4, x_lin)
 
         ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
         ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
-        ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
-        ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
+        
+        #ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
+        #ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
+        """
+        #ax.plot(x_lin, y_pred, color=colors[idx], linewidth=1, zorder=40, label=f"{sn} PySr") 
+        #ax.plot(x_lin, y_pred, color='black', linewidth=2, zorder=30) 
 
-        ax.plot(x, y, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
+        #ax.plot(x_lin, y_c3, color=colors1[idx], linewidth=2, zorder=20, label=f"{sn} 3") 
+        #ax.plot(x_lin, y_c5, color=colors2[idx], linewidth=2, zorder=20, label=f"{sn} 5") 
+        #ax.plot(x_lin, y_c8, color=colors3[idx], linewidth=2, zorder=20, label=f"{sn} 8") 
+        #ax.plot(x_lin, y_c8, color='black', linewidth=3, zorder=10, label=f"{sn} 8")
+        """
+
+        ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
+        ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
+        ax.plot(x_lin, p2_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 2") 
+        ax.plot(x_lin, p3_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 3") 
+        #ax.plot(x_lin, p4_fit, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic 4") 
 
         # calculate average across all redshifts
         sn_ratio = np.mean(ratio)
@@ -326,11 +390,12 @@ def run_cosmic():
         
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
+    ax.set_ylim(0,100)
     ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
-    fig.tight_layout(rect=[0, 0, 1, 1])
+    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
+    fig.tight_layout(rect=[0, 0.2, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic.png", dpi=300)
     return 0
 
@@ -339,65 +404,92 @@ def apply_aic(x, y, errs):
     # Maximum order of magnitude is 4 (quartic)
     prevCoeffs = [0, 0, 0, 0, 0]
     prevErrCoeffs = [0, 0, 0, 0, 0]
-    #xPlot = np.arange(min(x), max(x), 0.1)
-    xPlot = np.linspace(min(x), max(x), 300)
-    selectedOrder = 0
+    x_plot = np.linspace(min(x), max(x), 300)
+    selectedOrder = 1
 
     # set up first aic 
     # linear 
-    p0 = np.polyfit(x, y, 1).tolist()
-    intial = p0[0] * x + p0[1]
-    intial_plot = p0[0] * xPlot + p0[1]
-    rss = aich.rss(y, intial)
-    prevAIC = aich.aic(2, len(intial_plot), rss)
+    p0 = np.polyfit(x, y, 1)
+    initial = poly.polynomialCalc(p0, x)
+    initial_plot = poly.polynomialCalc(p0, x_plot)
+    rss = aich.rss(y, initial)
+    prevAIC = aich.aic(2, len(y), rss)
 
-    print(xPlot)
-    
-    #return p0, 0, 1, intial_plot, xPlot
+    min_aic = aich.aic(2, len(y), rss)
+    orders = range(1, 4)
+    aic_values = []
 
     for order in range(2,5):
         selectedOrder += 1
-        p0 = np.polyfit(x, y, order).tolist()
-        while len(p0) <= order:
-            p0.append(0)
-
+        # initial guess with polyfit
+         = np.polyfit(x, y, order)
+        
         # Scipy Curve fit 
         model = lambda x, *params : poly.polynomialFunc(order, x, np.array(params))
-        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
-        errCoeffs = np.sqrt(list(poly.getDiagonals(matrix))[0])      
+        #coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
+        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs)
+        errCoeffs = np.sqrt(list(poly.getDiagonals(matrix))[0])
 
-        while len(coeffs) < 5:
-            coeffs = np.append(0, coeffs)
-            errCoeffs = np.append(0, errCoeffs)
+        #coeffs = p0
+
+        print(f'    NumPy:{coeffs}\n    SciPy:{coeffs}')
         
         # determine polynomial values
-        polyList = poly.polynomialCalc(coeffs, x)
-        polyPlot = poly.polynomialCalc(coeffs, xPlot)
+        poly_values = poly.polynomialCalc(coeffs, x)
+        poly_plot = poly.polynomialCalc(coeffs, x_plot)
 
         # apply AIC to determine best order
-        rss = aich.rss(y, polyList)
-        aic = aich.aic(order + 1, len(polyPlot), rss)
-        prob = aich.probability(prevAIC, aic)
+        rss = aich.rss(y, poly_values)
+        aic = aich.aic(order + 1, len(y), rss)
+        #prob = aich.probability(prevAIC, aic)
+        
+        aic_values.append(aic)
+        #print(f"Current Order{order}\n   RSS: {rss}\n   Simple:  {prevAIC} \n   Comples:  {aic} \n   Prob:  {prob}")
 
+    probs = []
+    for idx, aic in enumerate(aic_values):
+        prob = aich.probability(min_aic, aic)
+        probs.append(prob)
+        #print(f"Order{idx+2}\n   min: {min_aic}\n   max:  {aic} \n  prob:  {prob}")
+        print(f"    Current Order {idx+1}\n       Simple:  {min_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
+
+    best_index = np.argmin(probs)
+    best_order = orders[best_index] + 1
+    if min(probs) < 0.95:
+        # probabily less than 0.95 so accept
+        print(f'    Chosen order: {best_order}')
+        p0 = np.polyfit(x, y, best_order)
+        model = lambda x, *params : poly.polynomialFunc(best_order, x, np.array(params))
+        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
+        y_plot = poly.polynomialCalc(coeffs, x_plot)
+
+    else:
+        # revert to initial 
+        # probabily greater than 0.95 so reject
+        print(f'Chosen order: 1')
+        y_plot = initial_plot
+
+    return x_plot, y_plot
+    """
         # make choice
-        print(f"AIC: Prev {prevAIC}, Curr {aic}, Probability: {prob}")
-        print(f"    {coeffs}")
         if prob > 0.95:
             # reject more complex model (previous model is better)
             # return the previous order's coeffs
             coeffs = prevCoeffs
             errCoeffs = prevErrCoeffs
-            polyList = poly.polynomialCalc(coeffs, x)
-            polyPlot = poly.polynomialCalc(coeffs, xPlot)
+            poly_values = poly.polynomialCalc(coeffs, x)
+            poly_plot = poly.polynomialCalc(coeffs, xPlot)
             selectedOrder = selectedOrder - 1
-            return coeffs, errCoeffs, selectedOrder, polyPlot, xPlot
+            continue
+            #return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
         # else accept more complex model (current model is better)
         # ie do nothing and continue to next order
         prevAIC = aic
         prevCoeffs = coeffs
         prevErrCoeffs = errCoeffs
+    """
 
-    return coeffs, errCoeffs, selectedOrder, polyPlot, xPlot
+    return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
 
 #run_redshift()
 run_cosmic()

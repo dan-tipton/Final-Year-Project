@@ -28,6 +28,7 @@ from matplotlib.ticker import ScalarFormatter
 from matplotlib.colors import LogNorm
 from scipy.interpolate import make_interp_spline
 import matplotlib.ticker as ticker
+from scipy.stats import linregress
 
 from matplotlib import cm
 from matplotlib.colors import Normalize 
@@ -130,7 +131,7 @@ def calculate_densities(snaps, rates_folder_type):
         snrd_box_err = np.sqrt(sum(squared_errs))
         snrd_box_errs.append(snrd_box_err/box_size)
 
-        print(total_snrd, snrd_box_err/box_size)
+        #print(total_snrd, snrd_box_err/box_size)
 
         # total SNRD Calculations ( units yr-1 Mpc-3) - Not used 
         total_snr_new = sum(subhalo_df["snr_solar"] * subhalo_df["mass"])
@@ -266,12 +267,12 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    #fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)#, fontsize=22, markerscale=3)
 
     if gap != None:
-        #fig.tight_layout(rect=[0, gap, 1, 1])
+        fig.tight_layout(rect=[0, gap, 1, 1])
         # tempoararily remove legend 
-        fig.tight_layout(rect=[0, 0, 1, 1])
+        #fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig, ax
 
@@ -335,6 +336,20 @@ def line_fit(x, y):
 
     return x_line, y_line, m, c
 
+def log_line(x1,y1):
+    x = np.asarray(x1)
+    y = np.asarray(y1)
+    mask = (x>0) & (y>0) & np.isfinite(x) & np.isfinite(y)
+    x = x[mask]
+    y = y[mask]
+    x_log = np.log10(x)
+    y_log = np.log10(y)
+    res = linregress(x_log, y_log)
+    grad = res.slope
+    #inter = np.exp(res.intercept)
+    inter = 10**res.intercept
+    return grad, inter, inter*x1**grad
+
 # region plot halo level
 def halo_level(snaps, rates_folder_type):
     
@@ -342,15 +357,21 @@ def halo_level(snaps, rates_folder_type):
     fig_halo_rate, ax_hr = plt_helper(8,6, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
     fig_halo_density, ax_hrd = plt_helper(8,6, r'Volumetric SFR [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'Volumetric SNR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
     fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
-    fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15)
+    fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
+    fig_res, ax_res = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2, logx=False, logy=False)
     fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
-    fig_mass, ax_mass = plt_helper(8, 6, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.17)
+    fig_mass, ax_mass = plt_helper(8, 6, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.1)
 
     all_snrd = []
     all_sfrd = []
 
     all_av_snrd = []
     all_av_sfrd = []
+
+    all_snr_solar = []
+    all_sfr = []
+    all_snr = []
+    all_mass = []
 
     for idx, snap in enumerate(snaps):
         # read rate files
@@ -362,19 +383,22 @@ def halo_level(snaps, rates_folder_type):
         redshift = subhalo_df['z'].iloc[0]
 
         # plot snr vs sfr and snrd vs sfrd (halo level)
+        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        #kcc, kcc_inter, log_fit1 = log_line(subhalo_df['sfr'], subhalo_df["snr"])
+        #ax_hr.plot(subhalo_df['sfr'], log_fit1, color=colours[idx], label=f'kcc: {kcc:.2}, a:{kcc_inter:.2}')
+        
         # convert to Mpc3 from Gpc3 => times 1e-9
         sfrd = subhalo_df['sfrd']*1e-9
         snrd = subhalo_df["snrd"]*1e-9
-        ax_hr.scatter(subhalo_df['sfr'], subhalo_df["snr"], marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
-        #ax_hr.errorbar(subhalo_df['sfr'], subhalo_df["snr"], yerr=subhalo_df["snr_err"], fmt='.', color=colours[idx], label=f'z={round(redshift,3)}')
-        #plt.show()
-        #break 
         ax_hrd.scatter(sfrd, snrd, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
 
         # snr_solar should be calculated as sum(pixel_snr)/sum(mass)
         # these values corrosponds to bpass paper 
-        snr_solar = subhalo_df["snr"]/subhalo_df['mass']
-        ax_mass.scatter(subhalo_df['mass'], snr_solar, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        halo_mass = subhalo_df['mass']
+        snr_solar = subhalo_df["snr"]/halo_mass
+        ax_mass.scatter(halo_mass, snr_solar, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
+        #B_ms, A_ms, log_fit2 = log_line(halo_mass, snr_solar)  
+        #ax_mass.plot(halo_mass, log_fit2, color=colours[idx], label=f'B: {B_ms:.2}, Log(A): {np.log10(A_ms):.1f}')
 
         # add to list to be used in 2d density histogram
         all_sfrd.append(sfrd)
@@ -387,6 +411,11 @@ def halo_level(snaps, rates_folder_type):
         av_snrd, av_sfrd = average_rate_densities(snrd, sfrd)
         all_av_snrd.append(av_snrd)
         all_av_sfrd.append(av_sfrd)
+
+        all_mass.extend(halo_mass)
+        all_snr_solar.extend(snr_solar)
+        all_sfr.extend(subhalo_df['sfr'])
+        all_snr.extend(subhalo_df['snr'])
 
     # Density Scatter of all points
     final_sfrd = pd.concat(all_sfrd, ignore_index=True)
@@ -423,17 +452,36 @@ def halo_level(snaps, rates_folder_type):
     ax_dense.scatter(x_filtered, y_filtered, color='black', label=f'Scatter (Point Density > {density_threshold})', marker='.', s=0.3)
 
     # Fit a straight line in log-space
-    log_x = np.log10(x_filtered)
-    log_y = np.log10(y_filtered)
-    coeffs = np.polyfit(log_x, log_y, 1)
-    slope, intercept = coeffs
-    x_line = np.logspace(np.log10(x_filtered.min()), np.log10(x_filtered.max()), 200)
-    y_line = 10**(slope * np.log10(x_line) + intercept)
+    #log_x = np.log10(x_filtered)
+    #log_y = np.log10(y_filtered)
+    #coeffs = np.polyfit(log_x, log_y, 1)
+    #slope, intercept = coeffs
+    #x_line = np.logspace(np.log10(x_filtered.min()), np.log10(x_filtered.max()), 200)
+    #y_line = 10**(slope * np.log10(x_line) + intercept)
 
     slope, intercept = np.polyfit(x_filtered, y_filtered, 1)
     x_line = np.linspace(x_filtered.min(), x_filtered.max(), 200)
     y_line = slope * x_line + intercept
-    ax_dense.plot(x_line, y_line, color='red', linewidth=1.5, label=f'Slope={slope:.4f}, Intercept={intercept:.2f}')
+
+    y_pred = slope * x_filtered + intercept
+    ss_res = np.sum((y_filtered - y_pred)**2)        # residual sum of squares
+    ss_tot = np.sum((y_filtered - np.mean(y_filtered))**2)
+    r2 = 1 - ss_res / ss_tot
+
+    rmse = np.sqrt(np.mean((y_filtered - y_pred)**2))
+
+    residuals = y_filtered - y_pred
+    ax_res.scatter(x_filtered, residuals, marker='.')
+    ax_res.axhline(0, color='black', linestyle='--')
+
+    ax_dense.plot(x_line, y_line, color='red', linewidth=1.5, label=f'Slope={slope:.4f}, Intercept={intercept:.2f}, r2: {r2:.2}, rmse: {rmse:.2}')
+    print("R²:", r2)
+    print("RMSE:", rmse)
+    print(f' Dense 1: Slope={slope:.4}, Intercept={intercept:.2}')
+
+    kcc, inter, log_fit = log_line(x_filtered, y_filtered)
+    #ax_dense.plot(x_filtered, log_fit, color='cyan', linewidth=1.5, label=f'Slope={kcc:.4}, Intercept={inter:.2}, mean={np.mean(log_fit/x_filtered):.2}')
+    #print(f' Dense 2: Slope={kcc:.4}, Intercept={inter:.2}, mean={np.mean(log_fit/x_filtered)}')
 
     # average plots 
     x_line, y_line, av_slope, av_intercept = line_fit(all_av_sfrd, all_av_snrd)
@@ -449,7 +497,17 @@ def halo_level(snaps, rates_folder_type):
     plt_labels(fig_halo_density, ax_hrd, 4, 0.2)
     plt_labels(fig_dense, ax_dense, 2)
     plt_labels(fig_av, ax_av, 2)
-    plt_labels(fig_mass, ax_mass, 4, 0.4)
+    plt_labels(fig_mass, ax_mass, 4, 0.2)
+
+    B_ms, A_ms, log_fit3 = log_line(all_mass, all_snr_solar)
+    ax_mass.plot(all_mass, log_fit3, color='black', label=f'B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}')
+    ax_mass.plot(halo_mass, (10**-6.5)*halo_mass**-0.58, color='black', label=f'Graur et al. 2015')
+
+    kcc, kcc_inter, log_fit4 = log_line(all_sfr, all_snr)
+    ax_hr.plot(all_sfr, log_fit4, color='black', label=f'kcc: {kcc:.2}, inter:{kcc_inter:.2}, test: {np.mean(log_fit4/all_sfr):.2}')
+
+    ax_dense.set_yscale('linear')
+    ax_dense.set_xscale('linear')
 
     return True
 
@@ -679,7 +737,7 @@ for i, sn_type in enumerate(all_sn_types):
     print(' SNR:', ', '.join(f'{s * 10**4:.4f}' for s in snrd))
     #print(' Total SNR:', total_snr[7])
 
-    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
+    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_residuals', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
         if idx > 3:
             curr_fig = plt.figure(fig_num)
@@ -694,7 +752,7 @@ for i, sn_type in enumerate(all_sn_types):
 total_snr = sum(total_snr_arr)
 total_snr_err = np.sqrt(sum(total_snr_err_arr))
 total_snr_err = sum(total_snr_err_arr)
-print('here', total_snr, total_snr_err)
+#print('here', total_snr, total_snr_err)
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
 ax_types1.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black', capsize=5, zorder=5)
 ax_types2.plot(rev_redshifts, total_sfr, label=f'Total', linestyle='--', color=sn_colours[4])
@@ -854,6 +912,7 @@ def myfunc(x):
 
 fig_ratio, ax_ratio = plt_helper(8, 6, "Redshift (z)",  r'Supernova Fraction [%]', logx=False, logy=False, legendspace=0.2)
 ratios = []
+fracs = []
 for idx, item in enumerate(test_dict.items()):
     name = item[0]
     csfrh = item[1][0]
@@ -880,6 +939,7 @@ for idx, item in enumerate(test_dict.items()):
     print(f'  SN With Redshift: {sn_values*100}')
     print(f'  SF: {sf_ratio*100:.2f} ± {sf_err*100:.2f}')
     ratios.append(sn_ratio)
+    fracs.append(np.round(sn_values*100,2))
 
     # plot across redshifts with error bars found from standard error of mean
     # THIS IS WRONG THERE IS NO ERROR DIVIDING BY EACH TYPE (current give 1 point for all)
@@ -901,3 +961,6 @@ for idx, item in enumerate(test_dict.items()):
 plt_labels(fig_ratio, ax_ratio, 4, 0.07)
 fig_ratio.savefig("Data/Images/TNG/final/cosmic/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))
+
+for group in zip(*fracs):
+    print(" & ".join(str(x) for x in group))
