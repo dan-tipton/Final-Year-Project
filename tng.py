@@ -780,7 +780,7 @@ ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Current Study (Curve Fi
 
 # scatter
 ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black', zorder=100)
-ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5)#, marker='D', zorder=90)
+ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5, fmt='D')#, marker='D', zorder=90)
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
 # plot data points
