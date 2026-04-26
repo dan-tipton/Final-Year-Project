@@ -57,7 +57,7 @@ bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
-rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_V1"
 # count lines for progress bar
 def count_lines_fast(path):
     with open(path, "rb") as f:
