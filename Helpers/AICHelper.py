@@ -161,3 +161,53 @@ class AICHelper():
 
         #print(f'Final Order: {final_order}')
         return x_plot, selected_plot, coeffs, coeff_errs
+    
+    def apply_aic_simple(self, x, y):
+        # Maximum order of magnitude is 4 (quartic)
+
+        # set up first aic as linear 
+        if len(y) > 2:
+            prev_coeffs = np.polyfit(x, y, 1)
+            x_plot = np.linspace(min(x), max(x), 300)
+        else:
+            return 0, 0, [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]
+
+        initial = poly.polynomialCalc(prev_coeffs, x)
+        rss = self.rss(y, initial)
+        max_aic = self.aic(2, len(y), rss)
+        prev_aic = self.aic(2, len(y), rss)
+        prev_plot = poly.polynomialCalc(prev_coeffs, x_plot)
+        
+        # other variables
+        selected_plot = prev_plot
+        aic_values = []
+        aic_values.append(max_aic)
+
+        for order in range(2,5):
+            if len(y) > order + 1:
+                # initial guess with polyfit
+                coeffs = np.polyfit(x, y, order)
+                
+                # determine polynomial values
+                poly_values = poly.polynomialCalc(coeffs, x)
+                poly_plot = poly.polynomialCalc(coeffs, x_plot)
+
+                # apply AIC to determine best order
+                rss = self.rss(y, poly_values)
+                aic = self.aic(order + 1, len(y), rss)
+                prob = self.probability(prev_aic, aic)
+                aic_values.append(aic)
+
+                if prob > 0.95:
+                    # reject complex model 
+                    coeffs = prev_coeffs
+
+                else:
+                    # accept complex model, move on 
+                    prev_aic = aic
+                    selected_plot = poly_plot
+                    prev_coeffs = coeffs
+            else:
+                return  x_plot, selected_plot, prev_coeffs
+            
+        return x_plot, selected_plot

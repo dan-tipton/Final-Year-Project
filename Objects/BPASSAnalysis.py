@@ -333,7 +333,8 @@ class BPASSAnalysis():
         # std and snRate used to generate noramal dist
         std = sn_df['Std']
         fwhm = 2 * np.sqrt(2 * np.log(2)) * std
-        snRate = self.polynomialFunc(len(coeffs)-1, z, coeffs)
+        snRate = np.polyval(coeffs, z)
+        #snRate = self.polynomialFunc(len(coeffs)-1, z, coeffs)
         normDataframe['ccSNe'] = sn_df.iloc[0]
         if snRate < 0: 
             #invalid SN rate - normally due to polynomial dropping off at the selected metallicity 
@@ -508,7 +509,6 @@ class BPASSAnalysis():
             'snr_err': error,
             'snr_solar_err': error_solar,
             'snrd_err': error_vol,
-
         }
         return subhalo_dataframe
         

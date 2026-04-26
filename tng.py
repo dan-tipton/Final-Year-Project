@@ -46,7 +46,7 @@ warnings.filterwarnings("ignore", message=".*non-positive xlim.*")
 #region setup
 tqdm.set_lock(RLock())
 
-MAX_WORKERS = 4
+MAX_WORKERS = 1
 colours = ['cyan', 'blue', 'orange', 'magenta', 'red', 'yellow', 'brown', 'limegreen', 'purple', 'pink', 'grey', 'black']
 colours = ['#800080',"#1a1a1a", "#3714ff", '#c0c0c0', "#1fb81f", '#40e0d0','#ffd700','#ffa500','#ff7f50',"#f53eff","#ff0000", '#87ceeb']
 sn_colours = ['#FF5733', '#33FF57', '#3357FF', "#FFD012", "#B53DFF"]
@@ -57,8 +57,7 @@ bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
-rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_Err"
-
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 # count lines for progress bar
 def count_lines_fast(path):
     with open(path, "rb") as f:
@@ -103,8 +102,10 @@ def calculate_densities(snaps, rates_folder_type):
     sfrd_box = []
     snrd_mass = []
     snrd_no_mass = []
-    snrd_box_errs = []
+    snrd_box_errs = [] 
     
+    #boxes = []
+    #for folder in ["/Users/dan/Code/FYP/Data/TNG/Rates_Err/IIP", "/Users/dan/Code/FYP/Data/TNG/Rates_V2/IIP"]:
     for idx, snap in enumerate(snaps):
         # read rate files
         rates_file = os.path.join(rates_folder_type, f"snapshot{snap}_rates.csv")
@@ -151,6 +152,12 @@ def calculate_densities(snaps, rates_folder_type):
         total_sfr = sum(subhalo_df["sfr"])
         total_sfrd = total_sfr / box_size
         sfrd_box.append(total_sfrd)
+    
+    #boxes.append(snrd_box)
+
+    #print('ORIGONAL:', boxes[0])
+    #print('NEW:', boxes[1])
+    #guh
 
     return redshifts, snrd_box, sfrd_box, snrd_no_mass, snrd_mass, snrd_box_errs
 
@@ -241,7 +248,6 @@ def curve_md14(redshifts, array, guess=1):
         p0 = [0.01, 2.77, 2.9, 4.7]
 
     params, cov = curve_fit(sfrd_func, redshifts, array, p0=p0)
-    #print('params', params)
     x_linespace = np.linspace(redshifts.min(), redshifts.max(), 300)
     md14_fit = sfrd_func(x_linespace, *params)
 
@@ -270,12 +276,12 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)#, fontsize=22, markerscale=3)
+    #fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)#, fontsize=22, markerscale=3)
 
     if gap != None:
-        fig.tight_layout(rect=[0, gap, 1, 1])
+        #fig.tight_layout(rect=[0, gap, 1, 1])
         # tempoararily remove legend 
-        #fig.tight_layout(rect=[0, 0, 1, 1])
+        fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig, ax
 
@@ -588,9 +594,12 @@ def cosmic_level(snaps, kcc_type, rates_folder_type):
     # SFRD values are compared between the two data sets 
     # this can be applied to the SNRD to get SNRD estimates for the whole box 
     sfrd_scaling = rev_sfrd_all/rev_sfrd_1000
+    print('scaling', sfrd_scaling)
+    #sfrd_scaling =1
 
     # apply scaling
     rev_snrd_1000_scaled = rev_snrd * sfrd_scaling 
+
     rev_snrd_1000_scaled_err = rev_snrd_err * sfrd_scaling 
     rev_snrd_alt_scaled = rev_snrd_alt * sfrd_scaling
     rev_snrd_mass_scaled = rev_snrd_mass * sfrd_scaling
@@ -605,7 +614,7 @@ def cosmic_level(snaps, kcc_type, rates_folder_type):
 
     # snrd curve fits
     md14_snrd_scaled, _ = curve_md14(rev_redshifts, rev_snrd_1000_scaled)
-    md14_snrd_alt_scaled, _ = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
+    #md14_snrd_alt_scaled, _ = curve_md14(rev_redshifts, rev_snrd_alt_scaled)
     md14_snrd_mass_scaled, _ = curve_md14(rev_redshifts, rev_snrd_mass_scaled)
 
     # sfrd 
@@ -670,10 +679,12 @@ def cosmic_level(snaps, kcc_type, rates_folder_type):
 
     #return md14_snrd_scaled, csfrh_kcc_chabrier, csnrh_chabrier, csfrh
     return rev_snrd_1000_scaled, csfrh_kcc_chabrier_raw, csnrh_chabrier, csfrh, rev_sfrd_all, rev_sfrd_1000, mf17, nv19, rev_snrd_1000_scaled_err, csfrh_kcc_chabrier_raw_err
+    return rev_snrd_1000_scaled
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # region Build
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
+#snapshots = [10]
 
 build = False
 
@@ -696,6 +707,7 @@ fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation
 fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
+all_sn_types = ["IIP", "II-other", "Ib", "Ic"]
 
 total_sfr = []
 total_snr_arr = []
@@ -703,12 +715,15 @@ total_snr_err_arr = []
 
 test_dict = {}
 
+#for rates_folder in ["/Users/dan/Code/FYP/Data/TNG/Rates_Err", "/Users/dan/Code/FYP/Data/TNG/Rates_V2"]:
+ #   boxes = []
 for i, sn_type in enumerate(all_sn_types):
     rates_folder_type = rates_folder + f"/{sn_type}"
     print(sn_type)
     if sn_type in ["IIP"]:
         kcc_type = 20
-    elif sn_type in ["II-Other"]:
+    #elif sn_type in ["II-Other"]:
+    elif sn_type in ["II-other"]:
         kcc_type = 25
     elif sn_type in ["Ib", "Ic"]:
         kcc_type = 10
@@ -751,6 +766,9 @@ for i, sn_type in enumerate(all_sn_types):
     ax_types1.errorbar(rev_redshifts, snrd, yerr=snrd_err, color='black', capsize=5, zorder=5)
     ax_types2.plot(rev_redshifts, sfrh, label=f'{sn_type}', color=sn_colours[i])
     test_dict[sn_type] = [sfrh, snrd]
+
+#print('ORIGONAL:', boxes[0])
+#print('NEW', boxes[1])
 
 total_snr = sum(total_snr_arr)
 total_snr_err = np.sqrt(sum(total_snr_err_arr))
@@ -840,8 +858,9 @@ ax_total_snr.fill_between(redshift_linespace, sfrd_nv19 * kcc_IIP, sfrd_nv19 * k
 ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Current Study (Curve Fit)', color='orange', zorder=99)
 
 # scatter
+print('HERE!!', total_snr)
 ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black', zorder=100)
-ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5)#, marker='D', zorder=90)
+ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5, fmt='D')#, marker='D', zorder=90)
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
 # plot data points
@@ -892,8 +911,9 @@ ax_total_snr.errorbar(1.11, 9.57e-4* h70**3, yerr=[[2.80e-4* h70**3], [3.76e-4* 
 """
 
 # set legend and axes
-ax_total_snr.set_yscale('linear')
-ax_total_snr.set_ylim(-1e-5, 12e-4)
+#ax_total_snr.set_yscale('linear')
+#ax_total_snr.set_ylim(-1e-5, 12e-4)
+#ax_total_snr.set_ylim(-1e-5, 12e-4)
 #ax_total_snr.set_ylim(1e-5, 10e-4)
 ax_total_snr.set_xlim(-0.2, 6)
 ax_total_snr.yaxis.set_major_formatter(ticker.FuncFormatter(lambda val, pos: f'{val*1e4:g}'))
@@ -956,7 +976,7 @@ for idx, item in enumerate(test_dict.items()):
     slope, intercept, r, p, std_err = stats.linregress(rev_redshifts, y)
     mymodel = list(map(myfunc, x))
 
-    x_aic, y_aic = aic.apply_aic(rev_redshifts, y)
+    x_aic, y_aic = aic.apply_aic_simple(rev_redshifts, y)
     ax_ratio.plot(x_aic, y_aic, color=sn_colours[idx], linewidth=1, zorder=30, label=f"{name} AIC")
     ax_ratio.plot(x, y_aic, color='black',  linewidth=2, zorder=20)
 

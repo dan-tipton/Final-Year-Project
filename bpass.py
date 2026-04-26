@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 2.1
+mode = 3
 
 # region Imports
 import pandas as pd
@@ -547,7 +547,7 @@ elif mode == 5:
 elif mode == 7:
     # plot tng rates given by Dylan in the QA padlet 
 
-    path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_Demo/tngrates.csv"
+    path = f"/Users/dan/Code/FYP/Data/TNG/Old/Snapshot_Demo/tngrates.csv"
     df = pd.read_csv(path, delimiter=' ', header=None)
 
     plt.scatter(df[0], df[2], marker='.')

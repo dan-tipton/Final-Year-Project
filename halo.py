@@ -132,8 +132,6 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
     for i, s in enumerate(snaps):
         df = dfs[s]
         z = df["z"].iloc[0]
-        print(z)
-
         sub_data = {}
         sub_data['Redshift'] = round(z,2)
         for idx, sn in enumerate(sn_type):
@@ -174,15 +172,18 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
             # linear regress
             z_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
-            slope, intercept, r, p, std_err = stats.linregress(z_log.ravel(), avg_ratio)
+            slope, intercept, r, p, std_err = stats.linregress(z_log, avg_ratio)
             y_pred = myfunc(z_log, slope, intercept)
             #regress = linear(z_log, slope, intercept)
             #print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
+
+            x_aic, y_aic = aic.apply_aic_simple(bin_centers, avg_ratio)
             
-            axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
-            axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
-            axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
-            axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
+            #axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
+            #axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
+            #axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
+            #axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
+            axes_bin[i].plot(x_aic, y_aic, color='black', linewidth=2, zorder=30) 
 
         ratio_data[s] = sub_data
         axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]', fontsize=18)
@@ -380,163 +381,9 @@ def run_cosmic():
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
     return 0
 
-'''
-def apply_aic(x, y, errs, additional_checks=False):
-    # Maximum order of magnitude is 4 (quartic)
-    x_plot = np.linspace(min(x), max(x), 300)
-
-    # set up first aic 
-    # linear 
-    p0 = np.polyfit(x, y, 1)
-    initial = poly.polynomialCalc(p0, x)
-    rss = aich.rss(y, initial)
-    max_aic = aich.aic(2, len(y), rss)
-    prev_aic = aich.aic(2, len(y), rss)
-    prev_plot = poly.polynomialCalc(p0, x_plot)
-
-    selected_plot = prev_plot
-    aic_values = []
-    aic_values.append(max_aic)
-
-    final_order = 1
-    for order in range(2,5):
-        # initial guess with polyfit
-        coeffs = np.polyfit(x, y, order)
-        
-        # determine polynomial values
-        poly_values = poly.polynomialCalc(coeffs, x)
-        poly_plot = poly.polynomialCalc(coeffs, x_plot)
-
-        # apply AIC to determine best order
-        rss = aich.rss(y, poly_values)
-        aic = aich.aic(order + 1, len(y), rss)
-        prob = aich.probability(prev_aic, aic)
-        aic_values.append(aic)
-        
-        #print(f"    Current Order {order}\n       Simple:  {max_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
-
-        if prob > 0.95:
-            # reject complex model 
-            final_order = order - 1
-            pass
-            #return x_plot, prev_plot
-        else:
-            # accept complex model, move on 
-            final_order = order
-            prev_aic = aic
-            selected_plot = poly_plot
-
-    if additional_checks == True:
-        # check more combinations than just against the linear fit
-        for i, j in combinations(range(len(aic_values)), 2):
-            max_a = aic_values[i]
-            min_a = aic_values[j]
-            prob = aich.probability(max_a, min_a)
-            #print(f'Order:{i+1}, {max_a}, Order:{j+1}, {min_a}, Prob:{prob}')  # apply your formula here
-
-            if prob < 0.95:
-                # check against higher order
-                prob = aich.probability(aic_values[j], aic_values[j+1])
-                if prob < 0.95:
-                    # accept as new again
-                    coeffs = np.polyfit(x, y, j+2)
-                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
-                    final_order = j+2
-                    #print(f'Accepted order - {j+2}')
-                else:
-                    # accept current j as the new order 
-                    coeffs = np.polyfit(x, y, j+1)
-                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
-                    final_order = j+1
-                    #print(f'Accepted order - {j+1}')
-                break
-                
-
-            # check higher orders against original
-            if (j-i > 1) and (prob < 0.95):
-                # order difference is greater than 1, and probability is good
-                # check the higher order against one lower to make sure it is better
-                prob = aich.probability(aic_values[i+1], min_a)
-                if prob < 0.95:
-                    # accept this as the new order 
-                    coeffs = np.polyfit(x, y, j+1)
-                    selected_plot = poly.polynomialCalc(coeffs, x_plot)
-                    final_order = j+1
-                    #print(f'Accepted order - {j+1}')
-                    break
-
-    print(f'Final Order: {final_order}')
-    return x_plot, selected_plot
-
-    """
-    probs = []
-    for idx, aic in enumerate(aic_values):
-        prob = aich.probability(min_aic, aic)
-        probs.append(prob)
-        #print(f"Order{idx+2}\n   min: {min_aic}\n   max:  {aic} \n  prob:  {prob}")
-        print(f"    Current Order {idx+1}\n       Simple:  {min_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
-
-    best_index = np.argmin(probs)
-    best_order = orders[best_index] + 1
-    if min(probs) < 0.95:
-        # probabily less than 0.95 so accept
-        print(f'    Chosen order: {best_order}')
-        p0 = np.polyfit(x, y, best_order)
-        model = lambda x, *params : poly.polynomialFunc(best_order, x, np.array(params))
-        coeffs, matrix = sco.curve_fit(model, x, y, p0, errs, absolute_sigma=True, nan_policy='omit', method='trf')
-        y_plot = poly.polynomialCalc(coeffs, x_plot)
-
-    else:
-        # revert to initial 
-        # probabily greater than 0.95 so reject
-        print(f'Chosen order: 1')
-        y_plot = initial_plot
-
-    return x_plot, y_plot
-    """
-    
-    """
-        # make choice
-        if prob > 0.95:
-            # reject more complex model (previous model is better)
-            # return the previous order's coeffs
-            coeffs = prevCoeffs
-            errCoeffs = prevErrCoeffs
-            poly_values = poly.polynomialCalc(coeffs, x)
-            poly_plot = poly.polynomialCalc(coeffs, xPlot)
-            selectedOrder = selectedOrder - 1
-            continue
-            #return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
-        # else accept more complex model (current model is better)
-        # ie do nothing and continue to next order
-        prevAIC = aic
-        prevCoeffs = coeffs
-        prevErrCoeffs = errCoeffs
-    """
-
-    return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
-'''
 
 #run_redshift()
 run_cosmic()
 #animate_plotter(snapshots, True)
 
-
-"""
-snaps1= [2, 10, 20]
-snaps2 = [26, 32, 40]
-snaps3 = [50, 57, 66]
-snaps4 = [80, 98]
-
-fig1 = plotter(snaps1, png_name='s2_10_20.png')
-fig2 = plotter(snaps2, png_name='s26_32_40.png')
-fig3 = plotter(snaps3, png_name='s50_57_66.png')
-fig4 = plotter(snaps4, png_name='s2_10_20.png')
-
-#new = np.array(snapshots)[::-1]
-#animate_plotter(new, save_gif=True)
-#animate_seperate(new, save_gif=True)
-
-#plt.show()
-"""
 
