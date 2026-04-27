@@ -363,17 +363,24 @@ def run_cosmic():
 
         #slope, intercept, r, p, std_err = stats.linregress(z, ratio)
         #regress = linear(z, slope, intercept)
-
-        x_aic, y_aic = aic.apply_aic(x, y, e)
-
-        ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
-        ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
-        
         #ax.plot(z, regress, color='black', linewidth=2, zorder=10) 
         #ax.plot(z, regress, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} lineregress") 
 
-        ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
-        ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
+        x_aic, y_aic = aic.apply_aic(x, y, e)
+        ax.errorbar(z, ratio, yerr=err, color='black', fmt='D', capsize=5, zorder=30)
+        ax.scatter(z, ratio, label=sn, color=colors[idx], marker='D', edgecolors='black', zorder=40)
+
+        if sn == 'IIP':
+            c2 = np.polyfit(x, y, 2)
+            c3 = np.polyfit(x, y, 3)
+            fit2 = poly.polynomialCalc(c2, x_aic)
+            fit3 = poly.polynomialCalc(c3, x_aic)
+            ax.plot(x_aic, fit3, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
+            ax.plot(x_aic, fit3, color='black', linewidth=2, zorder=10) 
+            ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, ls='--') 
+        else:
+            ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
+            ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
 
         formatted_ratio = [f"{x:.2f}" for x in ratio]
         formatted_err = [f"{x:.2f}" for x in err]
@@ -381,7 +388,7 @@ def run_cosmic():
         sn_ratio = np.mean(ratio)
         # calculate error in average across all redhisfts
         sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
-        print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
+        print(f'  Halo: {sn}: {sn_ratio:.3f} ± {sn_err:.2f}')
 
         rows = []
         for a, b in zip(formatted_ratio, formatted_err):
@@ -390,7 +397,7 @@ def run_cosmic():
         data[sn] = rows
         
     for idx, row in enumerate(zip(*data.values())):
-        print(z[len(z)-1-idx], ' & ', *row , '\\')
+        print(z[idx], ' & ', *row , '\\')
     
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
@@ -398,8 +405,8 @@ def run_cosmic():
     ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
-    fig.tight_layout(rect=[0, 0, 1, 1])
+    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0.3, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
     return 0
 
@@ -540,7 +547,7 @@ def apply_aic(x, y, errs, additional_checks=False):
     return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
 '''
 
-run_redshift()
+#run_redshift()
 run_cosmic()
 #animate_plotter(snapshots, True)
 

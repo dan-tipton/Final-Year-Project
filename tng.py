@@ -57,7 +57,7 @@ bpassAnalysis = BPASSAnalysis(allSupernovaArray)
 normIMF = IMF(1)
 imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
-rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_Err"
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 
 # count lines for progress bar
 def count_lines_fast(path):
@@ -130,9 +130,10 @@ def calculate_densities(snaps, rates_folder_type):
         snrd_box.append(total_snrd)
 
         # error in cosmic 
-        squared_errs = pow(subhalo_df["snr_err"], 2)
-        snrd_box_err = np.sqrt(sum(squared_errs))
-        snrd_box_errs.append(snrd_box_err/box_size)
+        #squared_errs = pow(subhalo_df["snr_err"], 2)
+        #snrd_box_err = np.sqrt(sum(squared_errs))
+        #snrd_box_errs.append(snrd_box_err/box_size)
+        snrd_box_errs.append(0) # turn off errors as so small - use orginal data
 
         #print(total_snrd, snrd_box_err/box_size)
 
@@ -270,7 +271,7 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False)#, fontsize=22, markerscale=3)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
 
     if gap != None:
         fig.tight_layout(rect=[0, gap, 1, 1])
@@ -291,6 +292,12 @@ def plt_labels_multiple(fig, axs, col):
 
     return fig, axs
 
+class HideNegativeFormatter(ticker.ScalarFormatter):
+    def __call__(self, x, pos=None):
+        if x < 0:
+            return ""
+        return super().__call__(x, pos)
+
 # set up cosmic history plots
 def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
 
@@ -301,10 +308,12 @@ def plt_cosmo(redshifts, ylabel, ytwin=None, space=None):
     redshift_to_age = interp1d(redshifts, lookback_time_grid, bounds_error=False, fill_value="extrapolate")
     age_to_redshift = interp1d(lookback_time_grid, redshifts, bounds_error=False, fill_value="extrapolate")
 
+
     ax_cosmic = ax_cosmo1.secondary_xaxis('top', functions=(redshift_to_age, age_to_redshift))
-    ax_cosmic.set_xlabel("Cosmic Lookback [Gyr]")
-    ax_cosmic.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax_cosmic.set_xlabel("Cosmic Lookback [Gyr]", fontsize=18)
+    ax_cosmic.xaxis.set_major_formatter(HideNegativeFormatter())
     ax_cosmic.ticklabel_format(style='plain', axis='x')
+    ax_cosmic.tick_params(axis='both', labelsize=18)
 
     if ytwin is not None:
         ax_cosmo2 = ax_cosmo1.twinx()
@@ -674,9 +683,8 @@ def cosmic_level(snaps, kcc_type, rates_folder_type):
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # region Build
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
-snapshots = [2]
 
-build = True
+build = False
 
 if build == True:
     results = []
@@ -690,11 +698,11 @@ if build == True:
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
-fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'Volumetric SNR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')#, space=0.2)
-fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'Star Formation Rate Density [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.25)
+fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'Volumetric SFR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
-fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'SFRD (Star Formation) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3)
-fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'SNRD (Supernova) [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
+fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'Star Formation Rate Density [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3, ytwin=None)
+fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'Supernova Rate Density [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
 
@@ -717,7 +725,7 @@ for i, sn_type in enumerate(all_sn_types):
         kcc_type = None
 
     # call functions to get rates
-    halo_level(snapshots, rates_folder_type) # dont need halo at the moment 
+    #halo_level(snapshots, rates_folder_type) # dont need halo at the moment 
     snrd, sfrh, snrd_md14_, sfrh_md14, sfrh_halos, sfrh_1000, sfrh_mf17, sfrh_nv19, snrd_err, sfrh_err  = cosmic_level(snapshots, kcc_type, rates_folder_type)
 
     # sum the sf and sn rates to get a total
@@ -749,7 +757,7 @@ for i, sn_type in enumerate(all_sn_types):
             plt.close(curr_fig)
 
     ax_types1.plot(rev_redshifts, snrd, label=f'{sn_type}', color=sn_colours[i], zorder=10)
-    ax_types1.errorbar(rev_redshifts, snrd, yerr=snrd_err, color='black', capsize=5, zorder=5)
+    #ax_types1.errorbar(rev_redshifts, snrd, yerr=snrd_err, color='black', capsize=5, zorder=5)
     ax_types2.plot(rev_redshifts, sfrh, label=f'{sn_type}', color=sn_colours[i])
     test_dict[sn_type] = [sfrh, snrd]
 
@@ -758,8 +766,9 @@ total_snr_err = np.sqrt(sum(total_snr_err_arr))
 total_snr_err = sum(total_snr_err_arr)
 #print('here', total_snr, total_snr_err)
 ax_types1.plot(rev_redshifts, total_snr, label=f'Total', linestyle='--', color=sn_colours[4])
-ax_types1.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black', capsize=5, zorder=5)
+#ax_types1.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black', fmt='D', capsize=5, zorder=5,)
 ax_types2.plot(rev_redshifts, total_sfr, label=f'Total', linestyle='--', color=sn_colours[4])
+plt_labels(fig_types1, ax_types1, 3, 0.17)
 plt_labels(fig_types1, ax_types1, 3)
 plt_labels(fig_types2, ax_types2, 3)
 
@@ -842,7 +851,7 @@ ax_total_snr.plot(redshift_linespace, curve_snr, label=f'Current Study (Curve Fi
 
 # scatter
 ax_total_snr.scatter(rev_redshifts, total_snr, label=f'Current Study', color='orange', marker='D', edgecolors='black', zorder=100)
-ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5)#, marker='D', zorder=90)
+ax_total_snr.errorbar(rev_redshifts, total_snr, yerr=total_snr_err, color='black',capsize=5, fmt='D')#, marker='D', zorder=90)
 #ax_total_snr.scatter(rev_redshifts, sfrh_halos * kcc, label=f'TNG100-1 (All Halos)', color='lime', marker='D', edgecolors='black')
 
 # plot data points

@@ -78,7 +78,7 @@ class AICHelper():
             prob = self.probability(prev_aic, aic)
             aic_values.append(aic)
             
-            #print(f"    Current Order {order}\n       Simple:  {max_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
+            print(f"    Current Order {order}\n       Simple:  {max_aic} \n       Complex:  {aic} \n       Prob:  {prob}")
 
             if prob > 0.95:
                 # reject complex model 
