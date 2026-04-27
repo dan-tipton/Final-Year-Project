@@ -403,10 +403,17 @@ def run_cosmic():
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
     #ax.set_ylim(0,100)
     ax.tick_params(axis='both', labelsize=18)
+    ax.text(
+        0.07, 0.98, "(B)",
+        transform=ax.transAxes,  # use axes coordinates (0–1)
+        ha='right',              # align right
+        va='top',                # align top
+        fontsize=18
+    )
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
-    fig.tight_layout(rect=[0, 0.3, 1, 1])
+    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
     return 0
 

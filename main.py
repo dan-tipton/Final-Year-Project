@@ -30,7 +30,7 @@ myAnalysis = Analysis(8, 25, 80, 0.7)
 
 # intialise dictionary using keys 
 keys = ['salpeter', 'kroupa', 'chabrier', 'chabrierSystem', 'char01', 'char1', 'char10', 'char100', 'charAlpha135', 'charAlpha335']
-keys = ['Salpeter (1955)', 'Kroupa (2001)', 'Chabrier (2003)', 'Chabrier-System (2003)', 
+keys = ['Salpeter (1955)', 'Kroupa (2001)', 'Chabrier (2003)', 'Chabrier-Sys (2003)', 
         r'$\mathrm{m_c}$ = 0.1 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 10 $\mathrm{M_\odot}$', r'$\mathrm{m_c}$ = 100 $\mathrm{M_\odot}$', 
         r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$, $\mathrm{\alpha}$ = -1.35', r'$\mathrm{m_c}$ = 1 $\mathrm{M_\odot}$, $\mathrm{\alpha}$ = -3.35']
 imfDict = {key: [] for key in keys}
@@ -260,8 +260,8 @@ ax.set_yscale('log')
 ax.set_ylim(10**-7,10**4)
 ax.tick_params(axis='both', labelsize=18)
 handles, labels = ax.get_legend_handles_labels()
-fig.legend(handles, labels, loc="lower center", ncol=4, frameon=False)
-fig.tight_layout(rect=[0, 0.15, 1, 1])
+fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, fontsize=14, markerscale=3)
+fig.tight_layout(rect=[0, 0.2, 1, 1])
 fig.savefig("Final/Images/IMF_new.png", dpi=300)
 fig.show()
 

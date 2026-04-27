@@ -271,12 +271,12 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
+    #fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
 
     if gap != None:
-        fig.tight_layout(rect=[0, gap, 1, 1])
+        #fig.tight_layout(rect=[0, gap, 1, 1])
         # tempoararily remove legend 
-        #fig.tight_layout(rect=[0, 0, 1, 1])
+        fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig, ax
 
@@ -366,13 +366,13 @@ def log_line(x1,y1):
 def halo_level(snaps, rates_folder_type):
     
     # set up figures and axes
-    fig_halo_rate, ax_hr = plt_helper(8,6, r'SFR (Star Formation Rate) [$\mathrm{M_\odot\ yr^{-1}}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}}$]', legendspace=0.2)
+    fig_halo_rate, ax_hr = plt_helper(8,6, r'Star Formation Rate [$\mathrm{M_\odot\ yr^{-1}}$]', r'Supernova Rate [$\mathrm{yr^{-1}}$]', legendspace=0.2)
     fig_halo_density, ax_hrd = plt_helper(8,6, r'Volumetric SFR [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'Volumetric SNR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
     fig_hist, ax_hist = plt_helper(8,7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]')
     fig_dense, ax_dense = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2)
-    fig_res, ax_res = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2, logx=False, logy=False)
     fig_av, ax_av = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.15, logx=False, logy=False)
-    fig_mass, ax_mass = plt_helper(8, 6, r'Mass [$\mathrm{M_\odot}$]', r'SNR (Supernova Rate) [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.1)
+    fig_mass, ax_mass = plt_helper(8, 6, r'Mass [$\mathrm{M_\odot}$]', r'Specific Supernova Rate [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.1)
+    fig_res, ax_res = plt_helper(8, 7, r'SFRD (Star Formation Rate Density) [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', r'SNRD (Supernova Rate Density) [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', legendspace=0.2, logx=False, logy=False)
 
     all_snrd = []
     all_sfrd = []
@@ -505,6 +505,30 @@ def halo_level(snaps, rates_folder_type):
     ax_av.plot(x_line, y_line, linestyle='--', color='blue', label=f'Slope={av_slope:.2e}, Intercept={av_intercept:.2e}')
 
     # labels
+    ax_hr.text(
+        0.07, 0.98, "(A)",
+        transform=ax_hr.transAxes,  # use axes coordinates (0–1)
+        ha='right',              # align right
+        va='top',                # align top
+        fontsize=18
+    )
+
+    ax_mass.text(
+        0.07, 0.98, "(B)",
+        transform=ax_mass.transAxes,  # use axes coordinates (0–1)
+        ha='right',              # align right
+        va='top',                # align top
+        fontsize=18
+    )
+
+    ax_hrd.text(
+        0.07, 0.98, "(C)",
+        transform=ax_hrd.transAxes,  # use axes coordinates (0–1)
+        ha='right',              # align right
+        va='top',                # align top
+        fontsize=18
+    )
+    
     plt_labels(fig_halo_rate, ax_hr, 4, 0.2)
     plt_labels(fig_halo_density, ax_hrd, 4, 0.2)
     plt_labels(fig_dense, ax_dense, 2)
@@ -512,11 +536,11 @@ def halo_level(snaps, rates_folder_type):
     plt_labels(fig_mass, ax_mass, 4, 0.2)
 
     B_ms, A_ms, log_fit3 = log_line(all_mass, all_snr_solar)
-    ax_mass.plot(all_mass, log_fit3, color='black', label=f'B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}')
-    ax_mass.plot(halo_mass, (10**-6.5)*halo_mass**-0.58, color='black', label=f'Graur et al. 2015')
+    #ax_mass.plot(all_mass, log_fit3, color='black', label=f'B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}')
+    #ax_mass.plot(halo_mass, (10**-6.5)*halo_mass**-0.58, color='black', label=f'Graur et al. 2015')
 
     kcc, kcc_inter, log_fit4 = log_line(all_sfr, all_snr)
-    ax_hr.plot(all_sfr, log_fit4, color='black', label=f'kcc: {kcc:.2}, inter:{kcc_inter:.2}, test: {np.mean(log_fit4/all_sfr):.2}')
+    #ax_hr.plot(all_sfr, log_fit4, color='black', label=f'kcc: {kcc:.2}, inter:{kcc_inter:.2}, test: {np.mean(log_fit4/all_sfr):.2}')
 
     ax_dense.set_yscale('linear')
     ax_dense.set_xscale('linear')
@@ -705,6 +729,7 @@ fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'Star Formation Rate 
 fig_total_snr, ax_total_snr, _ = plt_cosmo(rev_redshifts, r'Supernova Rate Density [$\mathrm{10^{-4} yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 all_sn_types = ["IIP", "II-Other", "Ib", "Ic"]
+#all_sn_types = ["IIP"]
 
 total_sfr = []
 total_snr_arr = []
@@ -725,7 +750,7 @@ for i, sn_type in enumerate(all_sn_types):
         kcc_type = None
 
     # call functions to get rates
-    #halo_level(snapshots, rates_folder_type) # dont need halo at the moment 
+    halo_level(snapshots, rates_folder_type) # dont need halo at the moment 
     snrd, sfrh, snrd_md14_, sfrh_md14, sfrh_halos, sfrh_1000, sfrh_mf17, sfrh_nv19, snrd_err, sfrh_err  = cosmic_level(snapshots, kcc_type, rates_folder_type)
 
     # sum the sf and sn rates to get a total
@@ -749,7 +774,7 @@ for i, sn_type in enumerate(all_sn_types):
     print(' SNR:', ', '.join(f'{s * 10**4:.4f}' for s in snrd))
     #print(' Total SNR:', total_snr[7])
 
-    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_residuals', 'halo_average', 'halo_snr_solar', 'cosmic_snr', 'cosmic_sfr']
+    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'halo_residuals', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
         if idx > 3:
             curr_fig = plt.figure(fig_num)
@@ -976,6 +1001,13 @@ for idx, item in enumerate(test_dict.items()):
     ax_ratio.scatter(rev_redshifts, y, label=name, color=sn_colours[idx], marker='D', edgecolors='black', zorder=40)
 
 #plt_labels(fig_ratio, ax_ratio, 4, 0.07)
+ax_ratio.text(
+    0.98, 0.98, "(A)",
+    transform=ax_ratio.transAxes,  # use axes coordinates (0–1)
+    ha='right',              # align right
+    va='top',                # align top
+    fontsize=18
+)
 fig_ratio.tight_layout(rect=[0, 0, 1, 1])
 fig_ratio.savefig("Data/Images/TNG/final/cosmic/cosmic_ratio.png", dpi=300)
 print('total', sum(ratios))
