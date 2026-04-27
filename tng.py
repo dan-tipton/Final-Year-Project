@@ -674,8 +674,9 @@ def cosmic_level(snaps, kcc_type, rates_folder_type):
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 # region Build
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
+snapshots = [2]
 
-build = False
+build = True
 
 if build == True:
     results = []

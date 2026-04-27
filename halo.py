@@ -129,13 +129,18 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
     ratio_data = {}
 
+    data = []
+    zs = []
     for i, s in enumerate(snaps):
         df = dfs[s]
         z = df["z"].iloc[0]
-        print(z)
+        #print(z)
+        zs.append(z)
 
         sub_data = {}
         sub_data['Redshift'] = round(z,2)
+
+        sdata = {}
         for idx, sn in enumerate(sn_type):
             # convert ratio to fraction
             ratio = df[f"snr_{sn}_ratio"] * 100
@@ -178,6 +183,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             y_pred = myfunc(z_log, slope, intercept)
             #regress = linear(z_log, slope, intercept)
             #print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
+            sdata[sn] = (f"{slope:.2f}({std_err:.2f}) &")
             
             axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
             axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
@@ -185,6 +191,7 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
             axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
 
         ratio_data[s] = sub_data
+        data.append(sdata)
         axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]', fontsize=18)
         axes[i].set_ylabel("Supernova Fraction [%]", fontsize=18)
         axes[i].set_xscale('log')
@@ -197,6 +204,9 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
         axes_bin[i].set_title(f"Redshift={z:.2f}", fontsize=18)
         axes_bin[i].tick_params(axis='both', labelsize=18)
     
+    for idx, row in enumerate(reversed(np.array(data))):
+        print(round(zs[len(zs)-1-idx],2), ' & ', *data[len(data)-1-idx].values() , '\\\\')
+
     # legends
     handles, labels = axes[0].get_legend_handles_labels()
     #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
@@ -289,7 +299,7 @@ def run_redshift():
         all_rows.append(df)
 
     all_data = pd.concat(all_rows, ignore_index=True)
-    all_data.to_csv('Final/Data/all_snapshots_ratio.csv', index=False)
+    all_data.to_csv('Final/Data/all_snapshots_ratio_new.csv', index=False)
 
     # Convert to LaTeX
     latex_table = all_data.to_latex(index=False, float_format="%.2f")
@@ -317,6 +327,10 @@ def run_cosmic():
         f.write("Complexity 8\n")
 
     fig, ax = plt.subplots(figsize=(8, 6))
+    data = {}
+    total = 0 
+    ratio_errs = []
+    ratios = []
     for idx, sn in enumerate(sn_type):
         print(sn)
         z = df["Redshift"]
@@ -361,20 +375,31 @@ def run_cosmic():
         ax.plot(x_aic, y_aic, color=colors[idx], linewidth=1, zorder=20, label=f"{sn} aic") 
         ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
 
+        formatted_ratio = [f"{x:.2f}" for x in ratio]
+        formatted_err = [f"{x:.2f}" for x in err]
         # calculate average across all redshifts
         sn_ratio = np.mean(ratio)
         # calculate error in average across all redhisfts
         sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
         print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
+
+        rows = []
+        for a, b in zip(formatted_ratio, formatted_err):
+            rows.append(f"{a}({b}) &")
+
+        data[sn] = rows
         
+    for idx, row in enumerate(zip(*data.values())):
+        print(z[len(z)-1-idx], ' & ', *row , '\\')
+    
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
     #ax.set_ylim(0,100)
     ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
-    fig.tight_layout(rect=[0, 0.3, 1, 1])
+    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
     return 0
 
@@ -515,7 +540,7 @@ def apply_aic(x, y, errs, additional_checks=False):
     return coeffs, errCoeffs, selectedOrder, poly_plot, xPlot
 '''
 
-#run_redshift()
+run_redshift()
 run_cosmic()
 #animate_plotter(snapshots, True)
 
