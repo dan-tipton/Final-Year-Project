@@ -911,8 +911,8 @@ ax_total_snr.errorbar(1.11, 9.57e-4* h70**3, yerr=[[2.80e-4* h70**3], [3.76e-4* 
 """
 
 # set legend and axes
-#ax_total_snr.set_yscale('linear')
-#ax_total_snr.set_ylim(-1e-5, 12e-4)
+ax_total_snr.set_yscale('linear')
+ax_total_snr.set_ylim(-1e-5, 12e-4)
 #ax_total_snr.set_ylim(-1e-5, 12e-4)
 #ax_total_snr.set_ylim(1e-5, 10e-4)
 ax_total_snr.set_xlim(-0.2, 6)

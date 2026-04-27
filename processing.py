@@ -47,6 +47,8 @@ def process_file(coeff_store, data_path,sn):
     rates = []
     masses = []
     stds = []
+
+    temp_rows = []
     for row in df.iter_rows(named=True):
         mtl = row['mtl']
         age = row['age_bin']
@@ -54,7 +56,16 @@ def process_file(coeff_store, data_path,sn):
         all_coeff_set = coeff_store[coeff_set_name]
         coeff_set = all_coeff_set[sn]
         rate_data = tng.randomiseRate(coeff_set.coeffs, coeff_set.std, mtl)
+        row['RandomRate'] = rate_data.rate
+        temp_rows.append(row)
+        rates.append(rate_data.rate)
 
+    df = pl.DataFrame(temp_rows)
+    print(max(rates))
+    print(sum(rates))
+    df.write_csv("output.csv")
+
+    '''
         rates.append(rate_data.rate)
         masses.append(row['mass_solar'])
         stds.append(rate_data.std)
@@ -62,6 +73,7 @@ def process_file(coeff_store, data_path,sn):
         sfr = row['halo_SFR']
         redshift = row['redshift']
         halo_id = row['halo_id']
+    '''
 
     #subhalo_data = SubhaloData(rates, masses, stds, volume, sfr, redshift)
     mass = sum(masses)
@@ -96,8 +108,9 @@ def process_file(coeff_store, data_path,sn):
     return subhalo_data
 
 my_coeff_store = load_coeff_file(Path("/Users/dan/Code/FYP/Data/coeff_data/imf_chab100"))
-rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_testing"
+rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates_V3"
 snapshots = [2, 10, 20, 26, 32, 40, 50, 57, 66, 80, 98]
+snapshots = [26]
 #snapshots = [2, 10]
 
 # Main loop — snapshots run sequentially, files within each run in parallel
@@ -109,6 +122,7 @@ for s in snapshots:
     split_start = time.time()
     position = snapshots.index(s) + 1
     input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_{s}/*"
+    input_path = f"/Users/dan/Code/FYP/Data/TNG/Snapshot_26/Subhalo62862_Redshift2.896.csv"
     my_glob = glob.glob(input_path)
     
     test = []
@@ -119,7 +133,7 @@ for s in snapshots:
             test.append(all_subhalo_data)
 
         subhalo_df = pd.DataFrame(test)
-        subhalo_df.to_csv(rates_folder + f"/{sn}/snapshot{s}_rates.csv")
+        subhalo_df.to_csv(rates_folder + f"/{sn}/snapshot{s}_rates_demo.csv")
     
     split_times[s] = (time.time() - split_start)
 

@@ -8,6 +8,9 @@ labels2 = ['IIP', 'II-Other', 'Ib', 'Ic']
 sizes2 = [47.38, 25.06, 18.60, 9.95]
 errors2 = [0.86, 1.69, 1.66, 0.61]
 
+sizes2 = [47.18, 25.15, 18.69, 8.98]
+errors2 = [0.48, 1.62, 1.72, 0.65]
+
 colors = ['#FF5733', '#33FF57', "#4C6CFD", "#FFD012"]
 fontsize = 14
 # Create figure with 1 row, 2 columns
@@ -35,7 +38,7 @@ axes[0].pie(
     wedgeprops={'edgecolor':'black', 'linewidth':2},
     textprops={'color':'white', 'weight':'bold', 'fontsize': fontsize}  # <-- white text
 )
-axes[0].set_title("A)")
+axes[0].set_title("A)",fontsize=20)
 axes[0].axis('equal')
 
 # Second pie chart
@@ -50,7 +53,7 @@ axes[1].pie(
     wedgeprops={'edgecolor':'black', 'linewidth':2},
     textprops={'color':'white', 'weight':'bold', 'fontsize': fontsize}  # <-- white text
 )
-axes[1].set_title("B)")
+axes[1].set_title("B)", fontsize=20)
 axes[1].axis('equal')
 
 plt.show()

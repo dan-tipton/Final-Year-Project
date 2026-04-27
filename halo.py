@@ -129,11 +129,16 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
     ratio_data = {}
 
+    data = []
+    zs = []
     for i, s in enumerate(snaps):
         df = dfs[s]
         z = df["z"].iloc[0]
+        zs.append(z)
         sub_data = {}
         sub_data['Redshift'] = round(z,2)
+
+        sdata = {}
         for idx, sn in enumerate(sn_type):
             # convert ratio to fraction
             ratio = df[f"snr_{sn}_ratio"] * 100
@@ -172,20 +177,22 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
 
             # linear regress
             z_log = np.log10(bin_centers).reshape(-1, 1)  # or np.log(x) for natural log
-            slope, intercept, r, p, std_err = stats.linregress(z_log, avg_ratio)
+            slope, intercept, r, p, std_err = stats.linregress(z_log.ravel(), avg_ratio)
+            #print('here', z_log.shape())
             y_pred = myfunc(z_log, slope, intercept)
             #regress = linear(z_log, slope, intercept)
-            #print(f"    {slope:.2f} $\pm$ {std_err:.2f} & ")
+            sdata[sn] = (f"{slope:.2f}({std_err:.2f}) &")
 
             x_aic, y_aic = aic.apply_aic_simple(bin_centers, avg_ratio)
             
-            #axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
-            #axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
-            #axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
-            #axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
+            axes[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30)  
+            axes[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40)  
+            axes_bin[i].plot(bin_centers, y_pred, color='black', linewidth=2, zorder=30) 
+            axes_bin[i].plot(bin_centers, y_pred, color=colors[idx], linewidth=1, zorder=40) 
             axes_bin[i].plot(x_aic, y_aic, color='black', linewidth=2, zorder=30) 
 
         ratio_data[s] = sub_data
+        data.append(sdata)
         axes[i].set_xlabel(r'Subhalo Mass [$\mathrm{M_\odot}$]', fontsize=18)
         axes[i].set_ylabel("Supernova Fraction [%]", fontsize=18)
         axes[i].set_xscale('log')
@@ -198,6 +205,16 @@ def redshift_bins(snaps, png_name='ratio.png', pcols=1):
         axes_bin[i].set_title(f"Redshift={z:.2f}", fontsize=18)
         axes_bin[i].tick_params(axis='both', labelsize=18)
     
+    #for idx, row in enumerate(zip(*data.values())):
+      #  print(' & ', *row , '\\')
+
+    for idx, row in enumerate(reversed(np.array(data))):
+        print(round(zs[len(zs)-1-idx],2), ' & ', *data[len(data)-1-idx].values() , '\\\\')
+
+    #keys = data[0]
+    #for col in zip(*([row[k] for k in keys] for row in data)):
+        #print(*col)
+
     # legends
     handles, labels = axes[0].get_legend_handles_labels()
     #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type))
@@ -318,6 +335,10 @@ def run_cosmic():
         f.write("Complexity 8\n")
 
     fig, ax = plt.subplots(figsize=(8, 6))
+    data = {}
+    total = 0
+    ratio_errs = []
+    ratios = []
     for idx, sn in enumerate(sn_type):
         print(sn)
         z = df["Redshift"]
@@ -365,24 +386,46 @@ def run_cosmic():
         ax.plot(x_aic, y_aic, color='black', linewidth=2, zorder=10) 
 
         # calculate average across all redshifts
+        formatted_ratio = [f"{x:.2f}" for x in ratio]
+        formatted_err = [f"{x:.2f}" for x in err]
+
         sn_ratio = np.mean(ratio)
+        ratios.append(sn_ratio)
+        total += sn_ratio
         # calculate error in average across all redhisfts
         sn_err = np.std(ratio, ddof=1) / np.sqrt(len(ratio))
-        print(f'  Halo: {sn}: {sn_ratio:.2f} ± {sn_err:.2f}')
-        
+        ratio_errs.append(sn_err)
+
+        rows = []
+        for a, b in zip(formatted_ratio, formatted_err):
+            rows.append(f"{a}^({b}) &")
+
+        data[sn] = rows
+        print(f'  Average: {sn_ratio:.2f} ± {sn_err:.2f}')
+    
+    for idx, x in enumerate(ratios):
+        print(f'  Halo: {(x/total)*100:.2f}')
+        print(f'  Err: {ratio_errs[idx]:.2f}')
+    print(f'  Halo: {(x/total)*100:.2f}' for x in ratios)
+    print(f'  Err: {x:.2f}' for x in ratio_errs)
+
     ax.set_xlabel("Redshift (z)", fontsize=18)
     ax.set_ylabel("Supernova Fraction [%]", fontsize=18)
     #ax.set_ylim(0,100)
     ax.tick_params(axis='both', labelsize=18)
 
     handles, labels = ax.get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
-    fig.tight_layout(rect=[0, 0.3, 1, 1])
+    #fig.legend(handles, labels, loc="lower center", ncol=len(sn_type), fontsize=18)
+    fig.tight_layout(rect=[0, 0, 1, 1])
     fig.savefig(f"Data/Images/TNG/ratio/mass/cosmic_halo.png", dpi=300)
+
+
+    for idx, row in enumerate(zip(*data.values())):
+        print(z[len(z)-1-idx], ' & ', *row , '\\')
     return 0
 
 
-#run_redshift()
+run_redshift()
 run_cosmic()
 #animate_plotter(snapshots, True)
 
