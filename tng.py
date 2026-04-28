@@ -271,12 +271,12 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    #fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
 
     if gap != None:
-        #fig.tight_layout(rect=[0, gap, 1, 1])
+        fig.tight_layout(rect=[0, gap, 1, 1])
         # tempoararily remove legend 
-        fig.tight_layout(rect=[0, 0, 1, 1])
+        #fig.tight_layout(rect=[0, 0, 1, 1])
 
     return fig, ax
 
@@ -722,7 +722,7 @@ if build == True:
 _, redshifts = calculated_sfrd()
 rev_redshifts = np.array(redshifts)[::-1]
 redshift_linespace = np.linspace(rev_redshifts.min(), rev_redshifts.max(), 300)
-fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'Star Formation Rate Density [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.25)
+fig_types1, ax_types1, _ = plt_cosmo(rev_redshifts, r'Supernova Rate Density [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.25)
 fig_types2, ax_types2, _ = plt_cosmo(rev_redshifts, r'Volumetric SFR [$\mathrm{yr^{-1}\ Mpc^{-3}}$]', space=0.2)
 
 fig_total_sfr, ax_total_sfr, _ = plt_cosmo(rev_redshifts, r'Star Formation Rate Density [$\mathrm{M_\odot\ yr^{-1}\ Mpc^{-3}}$]', space=0.3, ytwin=None)
