@@ -281,14 +281,15 @@ class BPASSAnalysis():
                 #myPlot.subplots_adjust(bottom=0.2, right=0.95)
                 ax.set_ylabel(r'Event Rate [$\mathrm{10^{-4} yr^{-1}}$]', fontsize=18)
                 ax.set_xlabel('Metallicity (Z)', fontsize=18)
-                ax.set_title(f'Age: {age:.2} log(yrs)', fontsize=18) 
+                #ax.set_title(f'Age: {age:.2} log(yrs)', fontsize=18) 
                 ax.tick_params(axis='both', labelsize=18)
                 ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x * 10000:.2f}"))
         
         handles, labels = ax.get_legend_handles_labels()
-        myPlot.legend(handles, labels,loc='lower center',ncol=4, frameon=False, fontsize=18)
-        myPlot.tight_layout(rect=[0, 0.15, 1, 1])
-        #myPlot.tight_layout(rect=[0, 0, 1, 1])
+        #ax.text(0.07, 0.98, "(B)",transform=ax.transAxes,ha='right',va='top',fontsize=18)
+        #myPlot.legend(handles, labels,loc='lower center',ncol=4, frameon=False, fontsize=18)
+        #myPlot.tight_layout(rect=[0, 0.15, 1, 1])
+        myPlot.tight_layout(rect=[0, 0, 1, 1])
 
         # If plot is true open and show plots
         if plot: 

@@ -15,7 +15,7 @@ to run correctly
 """
 
 # MODE SELECTION
-mode = 3
+mode = 2
 
 # region Imports
 import pandas as pd
@@ -73,7 +73,14 @@ if mode == -1:
                     mtl1 = f'1e-{mtl[2]}'
                 else: 
                     mtl1 = f"0.{mtl1}"
-                ax.set_title(f"Z = {mtl1}", fontsize=18)
+                #ax.set_title(f"Z = {mtl1}", fontsize=18)
+                ax.text(
+                    0.07, 0.98, "(A)",
+                    transform=ax.transAxes,  # use axes coordinates (0–1)
+                    ha='right',              # align right
+                    va='top',                # align top
+                    fontsize=18
+                )
                 ageSavePath = os.path.join(bpass.bpassImagePath, f"imf{imf}/Age", f"imf{imf}_{sinbin}_z{mtl}_age.png")
                 agePlot.savefig(ageSavePath, dpi=300)
                 #agePlot.close()

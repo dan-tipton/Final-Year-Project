@@ -59,6 +59,9 @@ imf = IMF(normIMF.chabrier(0.9)/normIMF.salpeter(0.9))
 
 rates_folder = f"/Users/dan/Code/FYP/Data/TNG/Rates"
 
+with open("snrmass_relation.txt", "w") as f:
+    f.write(f"SNR MASS RELATIONS\n")
+
 # count lines for progress bar
 def count_lines_fast(path):
     with open(path, "rb") as f:
@@ -77,6 +80,7 @@ def build_rates(snap):
     #build_type = "IIP"
     #sn_type = 0
     build_types = {0:"IIP", 1:"II-Other", 2:"Ib", 3:"Ic"}
+    build_types = {5:"Pair-Instab"}
     for build, sn in build_types.items():
         #print(build, sn)
         position = snapshots.index(snap) + 1
@@ -271,7 +275,7 @@ def plt_helper(size1, size2, xlabel, ylabel, logx=True, logy=True, legendspace=N
 def plt_labels(fig, ax, col, gap=None):
     handles, labels = ax.get_legend_handles_labels()
     # tempoararily remove legend 
-    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=22, markerscale=3)
+    fig.legend(handles, labels,loc='lower center',ncol=col, frameon=False, fontsize=18, markerscale=3)
 
     if gap != None:
         fig.tight_layout(rect=[0, gap, 1, 1])
@@ -351,7 +355,7 @@ def line_fit(x, y):
 def log_line(x1,y1):
     x = np.asarray(x1)
     y = np.asarray(y1)
-    mask = (x>0) & (y>0) & np.isfinite(x) & np.isfinite(y)
+    mask = (x>10**8) & (y>0) & np.isfinite(x) & np.isfinite(y)
     x = x[mask]
     y = y[mask]
     x_log = np.log10(x)
@@ -360,7 +364,8 @@ def log_line(x1,y1):
     grad = res.slope
     #inter = np.exp(res.intercept)
     inter = 10**res.intercept
-    return grad, inter, inter*x1**grad
+    
+    return grad, inter, inter*x1**grad, res.stderr, res.intercept_stderr
 
 # region plot halo level
 def halo_level(snaps, rates_folder_type):
@@ -385,6 +390,8 @@ def halo_level(snaps, rates_folder_type):
     all_snr = []
     all_mass = []
 
+    fig_mass_line, ax_mass_line = plt_helper(20, 20, r'Mass [$\mathrm{M_\odot}$]', r'Specific Supernova Rate [$\mathrm{yr^{-1}\ M_\odot^{-1}}$]', legendspace=0.1)
+
     for idx, snap in enumerate(snaps):
         # read rate files
         rates_file = os.path.join(rates_folder_type, f"snapshot{snap}_rates.csv")
@@ -408,9 +415,16 @@ def halo_level(snaps, rates_folder_type):
         # these values corrosponds to bpass paper 
         halo_mass = subhalo_df['mass']
         snr_solar = subhalo_df["snr"]/halo_mass
-        ax_mass.scatter(halo_mass, snr_solar, marker='.', color=colours[idx], label=f'z={round(redshift,3)}')
-        #B_ms, A_ms, log_fit2 = log_line(halo_mass, snr_solar)  
-        #ax_mass.plot(halo_mass, log_fit2, color=colours[idx], label=f'B: {B_ms:.2}, Log(A): {np.log10(A_ms):.1f}')
+        ax_mass.scatter(halo_mass, snr_solar, marker='.', color=colours[idx])#, label=f'z={round(redshift,3)}')
+        B_ms, A_ms, log_fit2, e1, e2 = log_line(halo_mass, snr_solar)  
+        x_log = np.linspace(10**6, 10**12, 300)
+        full_fit = A_ms*x_log**B_ms
+        #ax_mass_line.scatter(halo_mass, snr_solar, marker='.', color='lightblue', label=f'z={round(redshift,3)}', alpha=0.2)
+        ax_mass_line.plot(x_log, full_fit, color=colours[idx], label=f'B: {B_ms:.2}, log(A): {np.log10(A_ms):.1f}', zorder=20, linewidth=2)
+        ax_mass_line.plot(x_log, full_fit, color='black', linewidth=3, zorder=10)
+
+        with open("snrmass_relation.txt", "a") as f:
+            f.write(f"  z={redshift:.2f}: B={B_ms:.2}, Log(A)={np.log10(A_ms):.1f}\n")
 
         # add to list to be used in 2d density histogram
         all_sfrd.append(sfrd)
@@ -428,6 +442,16 @@ def halo_level(snaps, rates_folder_type):
         all_snr_solar.extend(snr_solar)
         all_sfr.extend(subhalo_df['sfr'])
         all_snr.extend(subhalo_df['snr'])
+
+    ax_mass_line.scatter(all_mass, all_snr_solar, marker='.', color='lightblue', label=f'', alpha=0.5)
+
+    # Find index of closest value
+    idx_low = np.abs(np.array(all_mass) - 1e10).argmin()
+    ylim_lower = all_snr_solar[idx_low] - (0.5*all_snr_solar[idx_low])
+    idx_high = np.abs(np.array(all_mass) - 1e6).argmin()
+    ylim_upper = all_snr_solar[idx_high] + (0.5*all_snr_solar[idx_high])
+    ax_mass_line.set_ylim(10**-12, 10**-10)
+    ax_mass_line.set_xlim(5*10**5, 5*10**11)
 
     # Density Scatter of all points
     final_sfrd = pd.concat(all_sfrd, ignore_index=True)
@@ -491,7 +515,7 @@ def halo_level(snaps, rates_folder_type):
     print("RMSE:", rmse)
     print(f' Dense 1: Slope={slope:.4}, Intercept={intercept:.2}')
 
-    kcc, inter, log_fit = log_line(x_filtered, y_filtered)
+    #kcc, inter, log_fit = log_line(x_filtered, y_filtered)
     #ax_dense.plot(x_filtered, log_fit, color='cyan', linewidth=1.5, label=f'Slope={kcc:.4}, Intercept={inter:.2}, mean={np.mean(log_fit/x_filtered):.2}')
     #print(f' Dense 2: Slope={kcc:.4}, Intercept={inter:.2}, mean={np.mean(log_fit/x_filtered)}')
 
@@ -506,44 +530,53 @@ def halo_level(snaps, rates_folder_type):
 
     # labels
     ax_hr.text(
-        0.07, 0.98, "(A)",
+        0.09, 0.98, "(A)",
         transform=ax_hr.transAxes,  # use axes coordinates (0–1)
         ha='right',              # align right
         va='top',                # align top
-        fontsize=18
+        fontsize=22
     )
 
     ax_mass.text(
-        0.07, 0.98, "(B)",
+        0.09, 0.98, "(B)",
         transform=ax_mass.transAxes,  # use axes coordinates (0–1)
         ha='right',              # align right
         va='top',                # align top
-        fontsize=18
+        fontsize=22
     )
 
     ax_hrd.text(
-        0.07, 0.98, "(C)",
+        0.09, 0.98, "(C)",
         transform=ax_hrd.transAxes,  # use axes coordinates (0–1)
         ha='right',              # align right
         va='top',                # align top
-        fontsize=18
+        fontsize=22
     )
-    
+
     plt_labels(fig_halo_rate, ax_hr, 4, 0.2)
     plt_labels(fig_halo_density, ax_hrd, 4, 0.2)
     plt_labels(fig_dense, ax_dense, 2)
     plt_labels(fig_av, ax_av, 2)
-    plt_labels(fig_mass, ax_mass, 4, 0.2)
+    #plt_labels(fig_mass, ax_mass, 4, 0.2)
+    plt_labels(fig_mass_line, ax_mass_line, 2, 0.2)
 
-    B_ms, A_ms, log_fit3 = log_line(all_mass, all_snr_solar)
-    #ax_mass.plot(all_mass, log_fit3, color='black', label=f'B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}')
-    #ax_mass.plot(halo_mass, (10**-6.5)*halo_mass**-0.58, color='black', label=f'Graur et al. 2015')
+    B_ms, A_ms, log_fit3, eB, eA = log_line(all_mass, all_snr_solar)
+    print(f'Overall: B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}')
+    with open("snrmass_relation.txt", "a") as f:
+        f.write(f'Overall: B: {B_ms:.2}, Log(A):{np.log10(A_ms):.2f}\n')
+    #ax_mass.plot(all_mass, log_fit3, color='black', label=rf"$B_{{MS}}= {B_ms:.2}({eB:.2})$, $log(A_{{MS}})= {np.log10(A_ms):.2f}({np.log10(eA):.2f})$", zorder=20, lw=2)
+    ax_mass.plot(all_mass, log_fit3, color='black', label=rf"$B_{{MS}}= {B_ms:.2}$, $log(A_{{MS}})= {np.log10(A_ms):.2f}$", zorder=20, lw=2)
+    ax_mass.plot(all_mass, log_fit3, color='white', zorder=10, lw=3)
 
-    kcc, kcc_inter, log_fit4 = log_line(all_sfr, all_snr)
+    handles, labels = ax_mass.get_legend_handles_labels()
+    fig_mass.legend(handles, labels,ncol=4, loc="lower right", bbox_to_anchor=(1, 0.1), frameon=False, fontsize=18, markerscale=3)
+    fig_mass.tight_layout(rect=[0, 0, 1, 1])
+
+    #kcc, kcc_inter, log_fit4 = log_line(all_sfr, all_snr)
     #ax_hr.plot(all_sfr, log_fit4, color='black', label=f'kcc: {kcc:.2}, inter:{kcc_inter:.2}, test: {np.mean(log_fit4/all_sfr):.2}')
 
-    ax_dense.set_yscale('linear')
-    ax_dense.set_xscale('linear')
+    #ax_dense.set_yscale('linear')
+    #ax_dense.set_xscale('linear')
 
     return True
 
@@ -740,6 +773,8 @@ test_dict = {}
 for i, sn_type in enumerate(all_sn_types):
     rates_folder_type = rates_folder + f"/{sn_type}"
     print(sn_type)
+    with open("snrmass_relation.txt", "a") as f:
+        f.write(f"{sn_type}\n")
     if sn_type in ["IIP"]:
         kcc_type = 20
     elif sn_type in ["II-Other"]:
@@ -774,7 +809,7 @@ for i, sn_type in enumerate(all_sn_types):
     print(' SNR:', ', '.join(f'{s * 10**4:.4f}' for s in snrd))
     #print(' Total SNR:', total_snr[7])
 
-    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'halo_residuals', 'cosmic_snr', 'cosmic_sfr']
+    plot_names = ['1', '2', '3', '4', 'halo_rates', 'halo_rate_density', 'halo_hist', 'halo_hist_reduced', 'halo_average', 'halo_snr_solar', 'halo_residuals', 'halo_snr_solar_line', 'cosmic_snr', 'cosmic_sfr']
     for idx, fig_num in enumerate(plt.get_fignums()):
         if idx > 3:
             curr_fig = plt.figure(fig_num)
